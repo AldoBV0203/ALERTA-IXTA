@@ -1,0 +1,155 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f2f4f7;
+    color: #222;
+}
+
+.contenedor {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.app {
+    width: 100%;
+    max-width: 390px;
+    min-height: 720px;
+    background: white;
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
+}
+
+.logo {
+    text-align: center;
+    font-size: 28px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.subtitulo {
+    text-align: center;
+    color: #666;
+    margin-bottom: 40px;
+}
+
+h2 {
+    margin-bottom: 25px;
+}
+
+.campo {
+    margin-bottom: 18px;
+}
+
+.campo label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.campo input,
+.campo select {
+    width: 100%;
+    padding: 13px;
+    border: 1px solid #bbb;
+    border-radius: 8px;
+    font-size: 15px;
+    background: white;
+}
+
+.boton {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 8px;
+    background: #1f528f;
+    color: white;
+    text-align: center;
+    text-decoration: none;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.boton-secundario {
+    background: #eeeeee;
+    color: #222;
+    margin-top: 15px;
+}
+
+.info {
+    color: #666;
+    line-height: 1.5;
+    font-size: 14px;
+}
+
+.sos-contenedor {
+    text-align: center;
+    margin: 35px 0;
+}
+
+.sos {
+    width: 190px;
+    height: 190px;
+    border-radius: 50%;
+    background: #c92b2b;
+    border: 5px solid #9b1717;
+    color: white;
+    font-size: 45px;
+    font-weight: bold;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    text-decoration: none;
+}
+
+.instruccion {
+    margin-top: 15px;
+    color: #666;
+    font-size: 14px;
+}
+
+.ubicacion {
+    background: #edf7ee;
+    color: #286837;
+    padding: 13px;
+    border-radius: 8px;
+    margin-top: 20px;
+}
+
+.tarjeta {
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 25px 0;
+}
+
+.tarjeta p {
+    margin: 7px 0 18px;
+}
+
+.tarjeta .etiqueta {
+    color: #777;
+    font-size: 13px;
+    margin-bottom: 3px;
+}
+
+.estado {
+    color: #c92b2b;
+    font-weight: bold;
+}
+
+.aviso {
+    text-align: center;
+    color: #777;
+    font-size: 12px;
+    margin-top: 30px;
+}
