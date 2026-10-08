@@ -1,3 +1,20 @@
+:root {
+    --vino-principal: #9F2241;
+    --vino-oscuro: #691C32;
+
+    --verde-principal: #235B4E;
+    --verde-oscuro: #10312B;
+
+    --beige: #DDC9A3;
+    --dorado: #BC955C;
+
+    --gris-claro: #98989A;
+    --gris-oscuro: #6F7271;
+
+    --blanco: #FFFFFF;
+    --fondo: #F8F6F1;
+}
+
 * {
     box-sizing: border-box;
 }
@@ -152,4 +169,28 @@ h2 {
     color: #777;
     font-size: 12px;
     margin-top: 30px;
+}
+
+.logo-ixtapaluca {
+    width: 180px;
+    max-width: 70%;
+    height: auto;
+    display: block;
+    margin: 0 auto 20px auto;
+}
+
+.error {
+    display: block;
+    margin-top: 5px;
+    font-size: 13px;
+    color: var(--vino-principal);
+}
+
+.mensaje-error {
+    background-color: #F8E8EC;
+    border-left: 4px solid var(--vino-principal);
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 5px;
+    color: var(--vino-oscuro);
 }

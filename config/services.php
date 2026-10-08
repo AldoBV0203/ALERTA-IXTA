@@ -35,4 +35,7 @@ return [
         ],
     ],
 
+    'alerta_ixta' => [
+    'curp_index_key' => env('CURP_INDEX_KEY'),
+    ],
 ];

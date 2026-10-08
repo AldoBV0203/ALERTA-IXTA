@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,49 +12,64 @@
 
 <body>
 
-<div class="contenedor">
+    <div class="contenedor">
 
-    <div class="app">
+        <div class="app">
 
-        <div class="logo">
-            ALERTA IXTA
-        </div>
+            <img
+                src="{{ asset('images/logoIxtapaluca2025.png') }}"
+                alt="Gobierno de Ixtapaluca"
+                class="logo-ixtapaluca">
 
-        <div class="subtitulo">
-            Sistema Municipal de Alerta
-        </div>
+            <div class="logo">
+                ALERTA IXTA
+            </div>
 
-        <h2>Iniciar sesión</h2>
+            <div class="subtitulo">
+                Sistema Municipal de Alerta y Botón de Pánico
+            </div>
 
-        <div class="campo">
-            <label>Correo electrónico</label>
+            <h2>Iniciar sesión</h2>
 
-            <input
-                type="email"
-                placeholder="usuario@correo.com"
-            >
-        </div>
+            <div class="campo">
+                <label>CURP</label>
 
-        <div class="campo">
-            <label>Contraseña</label>
+                <input
+                    type="text"
+                    placeholder="Ingresa tu CURP"
+                    maxlength="18">
+            </div>
 
-            <input
-                type="password"
-                placeholder="••••••••"
-            >
-        </div>
+            <div class="campo">
+                <label>Contraseña</label>
 
-        <a href="{{ route('inicio') }}" class="boton">
-            Iniciar sesión
-        </a>
+                <input
+                    type="password"
+                    placeholder="••••••••">
+            </div>
 
-        <div class="aviso">
-            Prototipo académico - ambiente de prueba
+            <a href="{{ route('inicio') }}" class="boton">
+                Iniciar sesión
+            </a>
+
+            <div class="aviso">
+
+                ¿No tienes una cuenta?
+
+                <a href="{{ route('registro') }}">
+                    Regístrate
+                </a>
+
+            </div>
+
+            <div class="aviso">
+                Gobierno de Ixtapaluca 2025–2027
+            </div>
+
         </div>
 
     </div>
 
-</div>
-
 </body>
+
 </html>
