@@ -13,35 +13,30 @@ use App\Models\Auditoria;
 
 class MonitoreoController extends Controller
 {
-    /**
-     * Mostrar las alertas recibidas al personal autorizado.
-     */
+    //Mostrar las alertas recibidas al personal autorizado.
+    
     public function alertas(Request $request)
     {
         $personal = $request->user();
 
-        /*
-         * Un ciudadano autenticado NO puede entrar
-         * al centro de monitoreo.
-         */
+        // Un ciudadano autenticado NO puede entrar al centro de monitoreo          
+         
         if (!$personal instanceof Operador) {
             return response()->json([
                 'message' => 'No tienes permiso para acceder al centro de monitoreo.',
             ], 403);
         }
 
-        /*
-         * La cuenta debe estar activa.
-         */
+        // La cuenta debe estar activa.
+        
         if (!$personal->activo) {
             return response()->json([
                 'message' => 'La cuenta no está autorizada.',
             ], 403);
         }
 
-        /*
-         * Solo estos roles pueden entrar.
-         */
+        // Solo estos roles pueden entrar.
+        
         $rolesPermitidos = [
             'OPERADOR',
             'SUPERVISOR',
@@ -54,12 +49,8 @@ class MonitoreoController extends Controller
             ], 403);
         }
 
-        /*
-         * Consultar alertas.
-         *
-         * Por ahora mostramos los datos básicos.
-         * El detalle completo lo haremos después.
-         */
+        // Consultar alertas.
+        
         $alertas = Alerta::with([
             'tipo:id_tipo,nombre'
         ])
@@ -118,9 +109,8 @@ class MonitoreoController extends Controller
             ], 403);
         }
 
-        /*
-     * Buscar alerta.
-     */
+        // buscar alerta
+    
         $alerta = Alerta::with([
             'tipo:id_tipo,nombre'
         ])
@@ -133,9 +123,8 @@ class MonitoreoController extends Controller
             ], 404);
         }
 
-        /*
-     * Obtener la ubicación más reciente.
-     */
+        // Obtener la ubicación más reciente.
+     
         $ubicacion = UbicacionAlerta::where(
             'id_alerta',
             $alerta->id_alerta
@@ -171,16 +160,14 @@ class MonitoreoController extends Controller
         ]);
     }
 
-    /**
-     * Aceptar una alerta.
-     */
+    // Aceptar una alerta.
+     
     public function aceptar(Request $request, int $id)
     {
         $personal = $request->user();
 
-        /*
-     * Solo personal municipal autorizado.
-     */
+        // Solo personal municipal autorizado.
+    
         if (!$personal instanceof Operador) {
             return response()->json([
                 'message' => 'No tienes permiso para realizar esta acción.',
@@ -203,10 +190,8 @@ class MonitoreoController extends Controller
             ], 403);
         }
 
-        /*
-     * Usamos transacción para que el cambio de estado
-     * y el seguimiento se guarden juntos.
-     */
+        // Usamos transacción para que el cambio de estado y el seguimiento se guarden juntos.
+     
         $alerta = DB::transaction(function () use ($id, $personal) {
 
             $alerta = Alerta::where(
@@ -220,23 +205,20 @@ class MonitoreoController extends Controller
                 return null;
             }
 
-            /*
-         * Solo se puede aceptar una alerta NUEVA.
-         */
+            // Solo se puede aceptar una alerta NUEVA.
+         
             if ($alerta->estado !== 'NUEVA') {
                 return 'NO_DISPONIBLE';
             }
 
-            /*
-         * Cambiar estado.
-         */
+            // Cambiar estado.
+        
             $alerta->estado = 'EN_ATENCION';
 
             $alerta->save();
 
-            /*
-         * Registrar quién aceptó la alerta.
-         */
+            // Registrar quién aceptó la alerta.
+         
             SeguimientoAlerta::create([
                 'id_alerta' => $alerta->id_alerta,
 
@@ -287,9 +269,8 @@ class MonitoreoController extends Controller
         ]);
     }
 
-    /**
-     * Registrar seguimiento de una alerta.
-     */
+    // Registrar seguimiento de una alerta.
+    
     public function seguimiento(Request $request, int $id)
     {
         $personal = $request->user();
@@ -380,9 +361,8 @@ class MonitoreoController extends Controller
         ], 201);
     }
 
-    /**
-     * Cerrar una alerta.
-     */
+    // Cerrar una alerta.
+   
     public function cerrar(Request $request, int $id)
     {
         $personal = $request->user();
@@ -499,9 +479,8 @@ class MonitoreoController extends Controller
         ]);
     }
 
-    /**
-     * Consultar el historial de seguimiento de una alerta.
-     */
+    // Consultar el historial de seguimiento de una alerta.
+    
     public function historial(Request $request, int $id)
     {
         $personal = $request->user();
@@ -569,9 +548,8 @@ class MonitoreoController extends Controller
         ]);
     }
 
-    /**
-     * Registrar una acción en la auditoría.
-     */
+    // Registrar una acción en la auditoría.
+   
     private function registrarAuditoria(
         Request $request,
         Operador $personal,
@@ -587,9 +565,8 @@ class MonitoreoController extends Controller
         ]);
     }
 
-    /**
-     * Obtener el operador que aceptó una alerta.
-     */
+    // Obtener el operador que aceptó una alerta.
+     
     private function obtenerOperadorAsignado(int $idAlerta): ?int
     {
         $idOperador = SeguimientoAlerta::where(

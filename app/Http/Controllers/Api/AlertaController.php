@@ -12,9 +12,8 @@ use Illuminate\Support\Str;
 
 class AlertaController extends Controller
 {
-    /**
-     * Obtener los tipos de alerta activos.
-     */
+    // se obtiene los tipos de alerta activos.
+    
     public function tipos()
     {
         $tipos = TipoAlerta::where('activo', true)
@@ -31,9 +30,7 @@ class AlertaController extends Controller
     }
 
 
-    /**
-     * Crear una nueva alerta.
-     */
+    //  Creamos la alerta nueva alerta.
     public function store(Request $request)
     {
         $datos = $request->validate([
@@ -61,10 +58,7 @@ class AlertaController extends Controller
             ],
         ]);
 
-        /*
-         * Comprobar que el tipo de alerta exista
-         * y esté activo.
-         */
+        // Comprobamos que el tipo de alerta exista y esté activo.
         $tipo = TipoAlerta::where(
             'id_tipo',
             $datos['id_tipo']
@@ -79,26 +73,19 @@ class AlertaController extends Controller
         }
 
 
-        /*
-         * Usuario autenticado mediante Sanctum.
-         */
+        // usamos sanctum para auntenticar el usuario
         $usuario = $request->user();
 
 
-        /*
-         * Utilizamos una transacción para evitar
-         * guardar una alerta incompleta.
-         */
+        // Utilizamos una transacción para evitar guardar una alerta incompleta.
         $alerta = DB::transaction(function () use (
             $datos,
             $usuario
         ) {
 
             /*
-             * Folio temporal único.
-             *
-             * Después de guardar conocemos el ID
-             * y generamos el folio definitivo.
+             Folio temporal único.
+             Después de guardar conocemos el ID y generamos el folio definitivo.
              */
             $folioTemporal = 'TMP-' . Str::uuid();
 
@@ -120,11 +107,8 @@ class AlertaController extends Controller
             ]);
 
 
-            /*
-             * Ejemplo:
-             *
-             * AIX-20261007-000001
-             */
+            // Ejemplo: AIX-20261007-000001
+             
             $folio = 'AIX-'
                 . now()->format('Ymd')
                 . '-'
@@ -142,11 +126,8 @@ class AlertaController extends Controller
 
 
             /*
-             * Guardamos también la ubicación
-             * en el historial de ubicaciones.
-             *
-             * Las coordenadas serán cifradas
-             * automáticamente por el modelo.
+               Guardamos también la ubicación en el historial de ubicaciones.
+               Las coordenadas serán cifradas automáticamente por el modelo.
              */
             UbicacionAlerta::create([
                 'id_alerta' => $alerta->id_alerta,
@@ -177,9 +158,8 @@ class AlertaController extends Controller
         ], 201);
     }
 
-    /**
-     * Obtener las alertas del ciudadano autenticado.
-     */
+    // con este metodo obtenemos las alertas del ciudadano autenticado.
+    
     public function misAlertas(Request $request)
     {
         $usuario = $request->user();

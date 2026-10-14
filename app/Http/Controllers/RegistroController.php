@@ -9,22 +9,19 @@ use Illuminate\Validation\Rules\Password;
 
 class RegistroController extends Controller
 {
-    /**
-     * Mostrar formulario de registro.
-     */
+    
+    // Mostrar formulario de registro.    
     public function create()
     {
         return view('registro');
     }
 
-    /**
-     * Guardar ciudadano.
-     */
+    
+    // Guardar ciudadano.     
     public function store(Request $request, CurpService $curpService)
     {
-        /*
-         * Primero validamos los datos básicos.
-         */
+        
+        // Primero validamos los datos básicos.        
         $request->validate([
             'name' => [
                 'required',
@@ -71,14 +68,13 @@ class RegistroController extends Controller
             'password.confirmed' => 'Las contraseñas no coinciden.',
         ]);
 
-        /*
-         * Normalizamos la CURP.
-         */
+        
+        //Normalizamos la CURP.
         $curp = $curpService->normalizar($request->curp);
 
-        /*
-         * Validamos estructura y dígito verificador.
-         */
+        
+        //Validamos estructura y dígito verificador.
+
         if (!$curpService->esValida($curp)) {
             return back()
                 ->withErrors([
@@ -87,14 +83,14 @@ class RegistroController extends Controller
                 ->withInput();
         }
 
-        /*
-         * Generamos el identificador seguro para búsquedas.
-         */
+        
+        // Generamos el identificador seguro para búsquedas.
+        
         $curpLookup = $curpService->generarLookup($curp);
 
-        /*
-         * Evitamos registrar dos veces la misma CURP.
-         */
+        
+        // Evitamos registrar dos veces la misma CURP.
+        
         if (User::where('curp_lookup', $curpLookup)->exists()) {
             return back()
                 ->withErrors([
@@ -104,15 +100,15 @@ class RegistroController extends Controller
         }
 
         /*
-         * Crear usuario.
-         *
-         * User.php se encargará automáticamente de:
-         *
-         * curp     -> cifrar
-         * name     -> cifrar
-         * email    -> cifrar
-         * telefono -> cifrar
-         * password -> hash
+         Crear usuario.
+         
+         User.php se encargará automáticamente de:
+        
+         curp     -> cifrarla
+         name     -> cifrar
+         email    -> cifrar
+         telefono -> cifrar
+         password -> hash
          */
         User::create([
             'name' => trim($request->name),

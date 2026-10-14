@@ -7,11 +7,9 @@ use App\Http\Controllers\Api\PersonalAuthController;
 use App\Http\Controllers\Api\MonitoreoController;
 
 
-/*
-|--------------------------------------------------------------------------
-| Rutas públicas
-|--------------------------------------------------------------------------
-*/
+
+//Rutas públicas
+
 
 Route::post('/registro', [AuthController::class, 'registro']);
 
@@ -21,11 +19,8 @@ Route::post('/personal/registro', [PersonalAuthController::class, 'registro']);
 
 Route::post('/personal/login', [PersonalAuthController::class, 'login']);
 
-/*
-|--------------------------------------------------------------------------
-| Rutas protegidas
-|--------------------------------------------------------------------------
-*/
+//Rutas protegidas
+
 
 Route::middleware('auth:sanctum')->group(function () {
 

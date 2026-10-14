@@ -9,11 +9,9 @@ use Illuminate\Support\Facades\Hash;
 
 class PersonalAuthController extends Controller
 {
-    /**
-     * Registrar una cuenta de personal municipal.
-     *
-     * La cuenta queda pendiente y sin acceso
-     * hasta que sea autorizada.
+    /*
+      Registrar una cuenta de personal municipal.    
+      La cuenta queda pendiente y sin acceso hasta que sea autorizada.      
      */
     public function registro(Request $request)
     {
@@ -70,17 +68,13 @@ class PersonalAuthController extends Controller
             'password_hash' => Hash::make(
                 $datos['password']
             ),
-
-            /*
-             * No dejamos que el usuario
-             * se asigne su propio rol.
-             */
+            
+            // No dejamos que el usuario se asigne su propio rol.
+             
             'rol' => 'PENDIENTE',
-
-            /*
-             * No puede acceder al sistema
-             * hasta ser autorizado.
-             */
+            
+             //No puede acceder al sistema hasta ser autorizado.
+             
             'activo' => false,
         ]);
 
@@ -109,9 +103,8 @@ class PersonalAuthController extends Controller
     }
 
 
-    /**
-     * Inicio de sesión del personal municipal.
-     */
+    // Inicio de sesión del personal municipal.
+    
     public function login(Request $request)
     {
         $datos = $request->validate([
@@ -138,10 +131,8 @@ class PersonalAuthController extends Controller
         )->first();
 
 
-        /*
-         * Mensaje genérico para no revelar
-         * si un usuario existe o no.
-         */
+        // Mensaje genérico para no revelar si un usuario existe o no.
+       
         if (
             !$operador ||
             !Hash::check(
@@ -156,9 +147,8 @@ class PersonalAuthController extends Controller
         }
 
 
-        /*
-         * Una cuenta pendiente NO puede entrar.
-         */
+        // Una cuenta pendiente NO puede entrar.
+        
         if (
             !$operador->activo ||
             $operador->rol === 'PENDIENTE'
@@ -168,12 +158,10 @@ class PersonalAuthController extends Controller
                     'La cuenta está pendiente de autorización.',
             ], 403);
         }
-
-
-        /*
-         * Generar token solamente
-         * para personal autorizado.
-         */
+        
+        
+        // Generar token solamente para personal autorizado.
+        
         $token = $operador
             ->createToken(
                 'alerta-ixta-personal',

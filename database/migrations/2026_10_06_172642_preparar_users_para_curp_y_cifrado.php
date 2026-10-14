@@ -74,7 +74,7 @@ return new class extends Migration
 
 /*
 users
-────────────────────────────────
+
 id
 
 curp                  ← CIFRADA

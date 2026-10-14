@@ -13,9 +13,8 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
-    /**
-     * Campos que Laravel puede guardar mediante asignación masiva.
-     */
+    // Campos que Laravel puede guardar mediante asignación masiva.
+     
     protected $fillable = [
         'curp',
         'curp_lookup',
@@ -29,19 +28,18 @@ class User extends Authenticatable
         'identidad_verificada_at',
     ];
 
-    /**
-     * Campos que no deben aparecer cuando el usuario
-     * se convierta a JSON o se envíe mediante la API.
-     */
+    
+    // Campos que no deben aparecer cuando el usuario se convierta a JSON o se envíe mediante la API.
+    
     protected $hidden = [
         'password',
         'remember_token',
         'curp_lookup',
     ];
 
-    /**
-     * Conversión y protección automática de atributos.
-     */
+    
+    // Conversión y protección automática de atributos.
+    
     protected function casts(): array
     {
         return [

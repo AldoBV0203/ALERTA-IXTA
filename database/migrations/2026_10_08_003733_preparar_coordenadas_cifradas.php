@@ -7,10 +7,9 @@ return new class extends Migration
 {
     public function up(): void
     {
-        /*
-         * Cambiamos las coordenadas de DECIMAL a TEXT
-         * porque Laravel almacenará el contenido cifrado.
-         */
+        
+        // Cambiamos las coordenadas de DECIMAL a TEXT  porque Laravel almacenará el contenido cifrado.
+        
         DB::statement("
             ALTER TABLE alertas
             MODIFY latitud TEXT NULL,
@@ -26,10 +25,9 @@ return new class extends Migration
 
     public function down(): void
     {
-        /*
-         * Solo sería seguro regresar a DECIMAL
-         * si las tablas no contienen coordenadas cifradas.
-         */
+        
+        // Solo sería seguro regresar a DECIMAL si las tablas no contienen coordenadas cifradas.
+         
         DB::statement("
             ALTER TABLE alertas
             MODIFY latitud DECIMAL(10,7) NULL,

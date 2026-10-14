@@ -7,9 +7,9 @@ use RuntimeException;
 
 class CurpService
 {
-    /**
-     * Claves oficiales de entidades federativas utilizadas en la CURP.
-     * NE corresponde a nacido en el extranjero.
+    /*
+     Claves oficiales de entidades federativas utilizadas en la CURP.
+    NE corresponde a nacido en el extranjero.
      */
     private const ENTIDADES = [
         'AS', 'BC', 'BS', 'CC', 'CL', 'CM', 'CS', 'CH',
@@ -19,31 +19,29 @@ class CurpService
         'NE',
     ];
 
-    /**
-     * Normaliza la CURP antes de trabajar con ella.
-     */
+    // Normaliza la CURP antes de trabajar con ella.
+    
     public function normalizar(string $curp): string
     {
         return strtoupper(trim($curp));
     }
 
-    /**
-     * Comprueba estructura, fecha, entidad y dígito verificador.
-     */
+    // Comprueba estructura, fecha, entidad y dígito verificador.
+   
     public function esValida(string $curp): bool
     {
         $curp = $this->normalizar($curp);
 
         /*
-         * Estructura:
-         *
-         * 4 letras
-         * 6 números de fecha AAMMDD
-         * H o M
-         * 2 letras de entidad
-         * 3 consonantes
-         * carácter diferenciador
-         * dígito verificador
+         Estructura para el curp:
+        
+         4 letras
+         6 números de fecha AAMMDD
+         H o M
+         2 letras de entidad
+         3 consonantes
+         carácter diferenciador
+         dígito verificador
          */
         $patron = '/^[A-Z][AEIOU][A-Z]{2}' .
                   '\d{6}' .
@@ -70,9 +68,9 @@ class CurpService
         $dia = (int) substr($curp, 8, 2);
 
         /*
-         * Posición 17:
-         * número -> nacimiento antes del año 2000
-         * letra  -> nacimiento a partir del año 2000
+         Posición 17:
+         número -> nacimiento antes del año 2000
+         letra  -> nacimiento a partir del año 2000
          */
         $caracterSiglo = $curp[16];
 
@@ -106,10 +104,9 @@ class CurpService
         return $curp[17] === $digitoEsperado;
     }
 
-    /**
-     * Genera el HMAC que utilizaremos para buscar la CURP
-     * sin almacenarla en texto plano.
-     */
+    
+    // Genera el HMAC que utilizaremos para buscar la CURP sin almacenarla en texto plano.
+     
     public function generarLookup(string $curp): string
     {
         $curp = $this->normalizar($curp);
@@ -135,9 +132,9 @@ class CurpService
         );
     }
 
-    /**
-     * Calcula el dígito verificador de la CURP.
-     */
+    
+    //Calcula el dígito verificador de la CURP.
+     
     private function calcularDigitoVerificador(string $base): string
     {
         $diccionario = preg_split(

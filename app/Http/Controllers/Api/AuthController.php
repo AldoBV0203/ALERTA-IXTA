@@ -44,42 +44,35 @@ class AuthController extends Controller
             ],
         ]);
 
-        /*
-     * Normalizar CURP.
-     */
+        // Normalizar CURP.
+    
         $curp = $curpService->normalizar($datos['curp']);
 
-        /*
-     * Validar CURP.
-     */
+        // Validar CURP.
+    
         if (!$curpService->esValida($curp)) {
             return response()->json([
                 'message' => 'La CURP ingresada no es válida.',
             ], 422);
         }
 
-        /*
-     * Generar curp_lookup.
-     */
+        // Generar curp_lookup.
+   
         $curpLookup = $curpService->generarLookup($curp);
 
-        /*
-     * Evitar CURP duplicada.
-     */
+        // Evitar CURP duplicada.
+    
         if (User::where('curp_lookup', $curpLookup)->exists()) {
             return response()->json([
                 'message' => 'Ya existe una cuenta registrada con esta CURP.',
             ], 409);
         }
 
-        /*
-     * Crear usuario.
-     *
-     * User.php cifra automáticamente:
-     * curp, name, email y telefono.
-     *
-     * También hashea password.
-     */
+        
+      /* Crear usuario.     
+      User.php cifra automáticamente: curp, name, email y telefono.      
+     También hashea password. */
+     
         $usuario = User::create([
             'name' => trim($datos['name']),
             'curp' => $curp,
@@ -102,9 +95,8 @@ class AuthController extends Controller
     }
 
 
-    /**
-     * Iniciar sesión con CURP y contraseña.
-     */
+    // inicia sesion con curp y la contraseña
+    
     public function login(Request $request, CurpService $curpService)
     {
         $datos = $request->validate([
@@ -120,37 +112,30 @@ class AuthController extends Controller
             ],
         ]);
 
-        /*
-         * Normalizar la CURP.
-         */
+        // normalizamos la curp
+         
         $curp = $curpService->normalizar($datos['curp']);
 
-        /*
-         * Comprobar que tenga una estructura válida.
-         */
+        // se comprueba que tenga una estructura válida
+         
         if (!$curpService->esValida($curp)) {
             return response()->json([
                 'message' => 'Credenciales incorrectas.',
             ], 401);
         }
 
-        /*
-         * Generar el HMAC para buscar la CURP
-         * sin tener que descifrar todos los usuarios.
-         */
+        // generamos el hmac para buscar la curp sin tener que descifrar todos los usuarios
+       
         $curpLookup = $curpService->generarLookup($curp);
 
-        /*
-         * Buscar ciudadano.
-         */
+        // se busca al ciudadano
+        
         $usuario = User::where(
             'curp_lookup',
             $curpLookup
         )->first();
 
-        /*
-         * Comprobar usuario y contraseña.
-         */
+        // Comprobar usuario y contraseña.
         if (
             !$usuario ||
             !Hash::check($datos['password'], $usuario->password)
@@ -160,18 +145,17 @@ class AuthController extends Controller
             ], 401);
         }
 
-        /*
-         * Comprobar que la cuenta esté activa.
-         */
+        //Comprobamos que la cuenta esté activa.
+          
+         
         if ($usuario->estatus !== 'ACTIVO') {
             return response()->json([
                 'message' => 'La cuenta no se encuentra activa.',
             ], 403);
         }
 
-        /*
-         * Crear token para la aplicación Android.
-         */
+        //se crea token para la aplicación           
+         
         $token = $usuario
             ->createToken('alerta-ixta-android', ['ciudadano'])
             ->plainTextToken;
@@ -193,9 +177,8 @@ class AuthController extends Controller
 
 
 
-    /**
-     * Obtener información del usuario autenticado.
-     */
+    // Obtener información del usuario autenticado.
+    
     public function usuario(Request $request)
     {
         $usuario = $request->user();
@@ -212,9 +195,8 @@ class AuthController extends Controller
     }
 
 
-    /**
-     * Cerrar sesión.
-     */
+    // cerrar sesion
+    
     public function logout(Request $request)
     {
         $request
