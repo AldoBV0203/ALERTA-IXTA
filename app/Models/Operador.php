@@ -21,6 +21,11 @@ class Operador extends Authenticatable
         'password_hash',
         'rol',
         'activo',
+        'disponible',
+        'latitud_actual',
+        'longitud_actual',
+        'precision_m',
+        'ubicacion_actualizada_at',
     ];
 
     protected $hidden = [
@@ -31,6 +36,13 @@ class Operador extends Authenticatable
     {
         return [
             'activo' => 'boolean',
+            'disponible' => 'boolean',
+
+            'latitud_actual' => 'encrypted',
+            'longitud_actual' => 'encrypted',
+
+            'precision_m' => 'decimal:2',
+            'ubicacion_actualizada_at' => 'datetime',
         ];
     }
 }

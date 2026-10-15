@@ -14,13 +14,13 @@ use App\Models\Auditoria;
 class MonitoreoController extends Controller
 {
     //Mostrar las alertas recibidas al personal autorizado.
-    
+
     public function alertas(Request $request)
     {
         $personal = $request->user();
 
         // Un ciudadano autenticado NO puede entrar al centro de monitoreo          
-         
+
         if (!$personal instanceof Operador) {
             return response()->json([
                 'message' => 'No tienes permiso para acceder al centro de monitoreo.',
@@ -28,7 +28,7 @@ class MonitoreoController extends Controller
         }
 
         // La cuenta debe estar activa.
-        
+
         if (!$personal->activo) {
             return response()->json([
                 'message' => 'La cuenta no está autorizada.',
@@ -36,8 +36,9 @@ class MonitoreoController extends Controller
         }
 
         // Solo estos roles pueden entrar.
-        
+
         $rolesPermitidos = [
+            'POLICIA',
             'OPERADOR',
             'SUPERVISOR',
             'ADMINISTRADOR',
@@ -50,7 +51,7 @@ class MonitoreoController extends Controller
         }
 
         // Consultar alertas.
-        
+
         $alertas = Alerta::with([
             'tipo:id_tipo,nombre'
         ])
@@ -98,6 +99,7 @@ class MonitoreoController extends Controller
         }
 
         $rolesPermitidos = [
+            'POLICIA',
             'OPERADOR',
             'SUPERVISOR',
             'ADMINISTRADOR',
@@ -110,7 +112,7 @@ class MonitoreoController extends Controller
         }
 
         // buscar alerta
-    
+
         $alerta = Alerta::with([
             'tipo:id_tipo,nombre'
         ])
@@ -124,7 +126,7 @@ class MonitoreoController extends Controller
         }
 
         // Obtener la ubicación más reciente.
-     
+
         $ubicacion = UbicacionAlerta::where(
             'id_alerta',
             $alerta->id_alerta
@@ -161,13 +163,13 @@ class MonitoreoController extends Controller
     }
 
     // Aceptar una alerta.
-     
+
     public function aceptar(Request $request, int $id)
     {
         $personal = $request->user();
 
         // Solo personal municipal autorizado.
-    
+
         if (!$personal instanceof Operador) {
             return response()->json([
                 'message' => 'No tienes permiso para realizar esta acción.',
@@ -181,7 +183,7 @@ class MonitoreoController extends Controller
         }
 
         $rolesPermitidos = [
-            'OPERADOR',
+            'POLICIA',
         ];
 
         if (!in_array($personal->rol, $rolesPermitidos, true)) {
@@ -190,9 +192,29 @@ class MonitoreoController extends Controller
             ], 403);
         }
 
+        if (!$personal->disponible) {
+            return response()->json([
+                'message' => 'El policía ya se encuentra atendiendo otra alerta.',
+            ], 409);
+        }
+
         // Usamos transacción para que el cambio de estado y el seguimiento se guarden juntos.
-     
+
         $alerta = DB::transaction(function () use ($id, $personal) {
+
+            $policiaBloqueado = Operador::where(
+                'id_operador',
+                $personal->id_operador
+            )
+                ->lockForUpdate()
+                ->first();
+
+            if (
+                !$policiaBloqueado ||
+                !$policiaBloqueado->disponible
+            ) {
+                return 'POLICIA_OCUPADO';
+            }
 
             $alerta = Alerta::where(
                 'id_alerta',
@@ -206,19 +228,21 @@ class MonitoreoController extends Controller
             }
 
             // Solo se puede aceptar una alerta NUEVA.
-         
+
             if ($alerta->estado !== 'NUEVA') {
                 return 'NO_DISPONIBLE';
             }
 
             // Cambiar estado.
-        
-            $alerta->estado = 'EN_ATENCION';
 
+            $alerta->estado = 'EN_CAMINO';
             $alerta->save();
 
+            $policiaBloqueado->disponible = false;
+            $policiaBloqueado->save();
+
             // Registrar quién aceptó la alerta.
-         
+
             SeguimientoAlerta::create([
                 'id_alerta' => $alerta->id_alerta,
 
@@ -227,7 +251,7 @@ class MonitoreoController extends Controller
                 'accion' => 'ACEPTO_ALERTA',
 
                 'observaciones' =>
-                'El operador aceptó la atención de la alerta.',
+                'El policia aceptó la alerta y se encuentra en camino.',
             ]);
 
             return $alerta;
@@ -242,6 +266,12 @@ class MonitoreoController extends Controller
         if ($alerta === 'NO_DISPONIBLE') {
             return response()->json([
                 'message' => 'La alerta ya fue aceptada o cambió de estado.',
+            ], 409);
+        }
+
+        if ($alerta === 'POLICIA_OCUPADO') {
+            return response()->json([
+                'message' => 'El policía ya se encuentra atendiendo otra alerta.',
             ], 409);
         }
 
@@ -270,7 +300,7 @@ class MonitoreoController extends Controller
     }
 
     // Registrar seguimiento de una alerta.
-    
+
     public function seguimiento(Request $request, int $id)
     {
         $personal = $request->user();
@@ -278,7 +308,7 @@ class MonitoreoController extends Controller
         if (
             !$personal instanceof Operador ||
             !$personal->activo ||
-            $personal->rol !== 'OPERADOR'
+            $personal->rol !== 'POLICIA'
         ) {
             return response()->json([
                 'message' => 'No tienes permiso para realizar esta acción.',
@@ -362,7 +392,7 @@ class MonitoreoController extends Controller
     }
 
     // Cerrar una alerta.
-   
+
     public function cerrar(Request $request, int $id)
     {
         $personal = $request->user();
@@ -370,7 +400,7 @@ class MonitoreoController extends Controller
         if (
             !$personal instanceof Operador ||
             !$personal->activo ||
-            $personal->rol !== 'OPERADOR'
+            $personal->rol !== 'POLICIA'
         ) {
             return response()->json([
                 'message' => 'No tienes permiso para realizar esta acción.',
@@ -410,6 +440,10 @@ class MonitoreoController extends Controller
                 return 'YA_CERRADA';
             }
 
+            if ($alerta->estado !== 'EN_SITIO') {
+                return 'NO_EN_SITIO';
+            }
+
             $idOperadorAsignado = $this->obtenerOperadorAsignado(
                 $alerta->id_alerta
             );
@@ -419,7 +453,6 @@ class MonitoreoController extends Controller
             }
 
             $alerta->estado = 'CERRADA';
-
             $alerta->save();
 
             SeguimientoAlerta::create([
@@ -431,6 +464,10 @@ class MonitoreoController extends Controller
 
                 'observaciones' => $datos['observaciones'],
             ]);
+
+            // El policía vuelve a estar disponible.
+            $personal->disponible = true;
+            $personal->save();
 
             return $alerta;
         });
@@ -459,6 +496,12 @@ class MonitoreoController extends Controller
             ], 403);
         }
 
+        if ($resultado === 'NO_EN_SITIO') {
+            return response()->json([
+                'message' => 'La alerta solo puede cerrarse cuando el policía haya llegado al sitio.',
+            ], 409);
+        }
+
         $this->registrarAuditoria(
             $request,
             $personal,
@@ -480,7 +523,7 @@ class MonitoreoController extends Controller
     }
 
     // Consultar el historial de seguimiento de una alerta.
-    
+
     public function historial(Request $request, int $id)
     {
         $personal = $request->user();
@@ -498,6 +541,7 @@ class MonitoreoController extends Controller
         }
 
         $rolesPermitidos = [
+            'POLICIA',
             'OPERADOR',
             'SUPERVISOR',
             'ADMINISTRADOR',
@@ -549,7 +593,7 @@ class MonitoreoController extends Controller
     }
 
     // Registrar una acción en la auditoría.
-   
+
     private function registrarAuditoria(
         Request $request,
         Operador $personal,
@@ -566,7 +610,7 @@ class MonitoreoController extends Controller
     }
 
     // Obtener el operador que aceptó una alerta.
-     
+
     private function obtenerOperadorAsignado(int $idAlerta): ?int
     {
         $idOperador = SeguimientoAlerta::where(

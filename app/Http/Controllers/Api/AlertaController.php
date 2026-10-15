@@ -9,11 +9,13 @@ use App\Models\UbicacionAlerta;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use App\Models\SeguimientoAlerta;
+use App\Models\Operador;
 
 class AlertaController extends Controller
 {
     // se obtiene los tipos de alerta activos.
-    
+
     public function tipos()
     {
         $tipos = TipoAlerta::where('activo', true)
@@ -108,7 +110,7 @@ class AlertaController extends Controller
 
 
             // Ejemplo: AIX-20261007-000001
-             
+
             $folio = 'AIX-'
                 . now()->format('Ymd')
                 . '-'
@@ -159,7 +161,7 @@ class AlertaController extends Controller
     }
 
     // con este metodo obtenemos las alertas del ciudadano autenticado.
-    
+
     public function misAlertas(Request $request)
     {
         $usuario = $request->user();
@@ -189,6 +191,90 @@ class AlertaController extends Controller
 
         return response()->json([
             'alertas' => $alertas,
+        ]);
+    }
+
+    // Consultar el estado de una alerta propia del ciudadano.
+    public function estado(Request $request, int $id)
+    {
+        $usuario = $request->user();
+
+        // El ciudadano solamente puede consultar sus propias alertas.
+        $alerta = Alerta::with([
+            'tipo:id_tipo,nombre'
+        ])
+            ->where('id_alerta', $id)
+            ->where('id_usuario', $usuario->id)
+            ->first();
+
+        if (!$alerta) {
+            return response()->json([
+                'message' => 'La alerta no existe o no pertenece al usuario.',
+            ], 404);
+        }
+
+        // Buscar qué policía aceptó la alerta.
+        $asignacion = SeguimientoAlerta::where(
+            'id_alerta',
+            $alerta->id_alerta
+        )
+            ->where('accion', 'ACEPTO_ALERTA')
+            ->orderBy('id')
+            ->first();
+
+        $policia = null;
+
+        if ($asignacion) {
+            $personal = Operador::where(
+                'id_operador',
+                $asignacion->id_operador
+            )
+                ->where('rol', 'POLICIA')
+                ->first();
+
+            if ($personal) {
+
+                // La ubicación del policía solamente se comparte
+                // mientras la emergencia sigue activa.
+                $mostrarUbicacion = in_array(
+                    $alerta->estado,
+                    [
+                        'EN_CAMINO',
+                        'EN_SITIO',
+                    ],
+                    true
+                );
+
+                $policia = [
+                    'id_operador' => $personal->id_operador,
+                    'nombre' => $personal->nombre,
+
+                    'ubicacion' => $mostrarUbicacion ? [
+                        'latitud' => $personal->latitud_actual,
+                        'longitud' => $personal->longitud_actual,
+                        'precision_m' => $personal->precision_m,
+                        'actualizada_at' =>
+                        $personal->ubicacion_actualizada_at,
+                    ] : null,
+                ];
+            }
+        }
+
+        return response()->json([
+            'alerta' => [
+                'id_alerta' => $alerta->id_alerta,
+                'folio' => $alerta->folio,
+                'tipo' => $alerta->tipo?->nombre,
+                'estado' => $alerta->estado,
+                'prioridad' => $alerta->prioridad,
+
+                'ubicacion' => [
+                    'latitud' => $alerta->latitud,
+                    'longitud' => $alerta->longitud,
+                ],
+
+                'policia' => $policia,
+            ],
         ]);
     }
 }

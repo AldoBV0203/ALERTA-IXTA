@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AlertaController;
 use App\Http\Controllers\Api\PersonalAuthController;
 use App\Http\Controllers\Api\MonitoreoController;
-
+use App\Http\Controllers\Api\PoliciaController;
 
 
 //Rutas públicas
@@ -78,4 +78,14 @@ Route::middleware('auth:sanctum')->group(function () {
         MonitoreoController::class,
         'historial'
     ]);
+
+    Route::post(
+        '/policia/ubicacion',
+        [PoliciaController::class, 'actualizarUbicacion']
+    );
+
+    Route::get(
+        '/mis-alertas/{id}/estado',
+        [AlertaController::class, 'estado']
+    );
 });

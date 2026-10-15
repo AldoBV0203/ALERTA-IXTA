@@ -18,3 +18,4 @@ Route::view('/inicio', 'inicio')->name('inicio');
 
 Route::view('/alerta-enviada', 'alerta-enviada')->name('alerta.enviada');
 
+Route::view('/policia','policia')->name('policia');
