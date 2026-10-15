@@ -50,6 +50,43 @@
             text-align: center;
             font-weight: bold;
         }
+
+        .marcador-ciudadano {
+            width: 26px;
+            height: 26px;
+            background: #d32f2f;
+            border: 4px solid white;
+            border-radius: 50%;
+            box-shadow: 0 0 0 rgba(211, 47, 47, 0.7);
+            animation: pulsoEmergencia 1.5s infinite;
+        }
+
+        .marcador-policia {
+            width: 36px;
+            height: 36px;
+            background: #1565c0;
+            border: 3px solid white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 21px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+        }
+
+        @keyframes pulsoEmergencia {
+            0% {
+                box-shadow: 0 0 0 0 rgba(211, 47, 47, 0.7);
+            }
+
+            70% {
+                box-shadow: 0 0 0 18px rgba(211, 47, 47, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(211, 47, 47, 0);
+            }
+        }
     </style>
 
 </head>
@@ -170,6 +207,20 @@
                     </span>
                 </p>
 
+                <p id="filaDistancia" style="display: none;">
+                    <strong>Distancia aproximada:</strong>
+                    <span id="distanciaPolicia">
+                        -
+                    </span>
+                </p>
+
+                <p id="filaTiempo" style="display: none;">
+                    <strong>Tiempo aproximado:</strong>
+                    <span id="tiempoPolicia">
+                        -
+                    </span>
+                </p>
+
             </div>
 
 
@@ -222,6 +273,23 @@
         let idAlertaActual = null;
 
         let intervaloEstado = null;
+
+        let rutaPoliciaCiudadano = null;
+
+
+        const iconoCiudadano = L.divIcon({
+            className: '',
+            html: '<div class="marcador-ciudadano"></div>',
+            iconSize: [34, 34],
+            iconAnchor: [17, 17]
+        });
+
+        const iconoPolicia = L.divIcon({
+            className: '',
+            html: '<div class="marcador-policia">🚓</div>',
+            iconSize: [42, 42],
+            iconAnchor: [21, 21]
+        });
 
 
         // Si no existe token, regresar al login.
@@ -533,10 +601,14 @@
             if (!marcadorCiudadano) {
 
                 marcadorCiudadano =
-                    L.marker([
-                        latitud,
-                        longitud
-                    ])
+                    L.marker(
+                        [
+                            latitud,
+                            longitud
+                        ], {
+                            icon: iconoCiudadano
+                        }
+                    )
                     .addTo(mapa)
                     .bindPopup(
                         'Mi ubicación'
@@ -937,7 +1009,6 @@
                         .latitud
                     );
 
-
                 const longitud =
                     parseFloat(
                         alerta.policia
@@ -946,16 +1017,21 @@
                     );
 
 
+                // Crear o mover el marcador del policía.
                 if (!marcadorPolicia) {
 
                     marcadorPolicia =
-                        L.marker([
-                            latitud,
-                            longitud
-                        ])
+                        L.marker(
+                            [
+                                latitud,
+                                longitud
+                            ], {
+                                icon: iconoPolicia
+                            }
+                        )
                         .addTo(mapa)
                         .bindPopup(
-                            'Policía asignado'
+                            'Policía en camino'
                         );
 
                 } else {
@@ -969,8 +1045,13 @@
                 }
 
 
+                // Calcular la ruta real por calles.
+                calcularRutaCiudadano();
+
+
             } else {
 
+                // Eliminar policía si ya no debe mostrarse.
                 if (marcadorPolicia) {
 
                     mapa.removeLayer(
@@ -980,6 +1061,35 @@
                     marcadorPolicia = null;
 
                 }
+
+
+                // Eliminar ruta.
+                if (rutaPoliciaCiudadano) {
+
+                    mapa.removeLayer(
+                        rutaPoliciaCiudadano
+                    );
+
+                    rutaPoliciaCiudadano = null;
+
+                }
+
+                // Ocultar distancia.
+                document
+                    .getElementById(
+                        'filaDistancia'
+                    )
+                    .style.display =
+                    'none';
+
+
+                // Ocultar tiempo aproximado.
+                document
+                    .getElementById(
+                        'filaTiempo'
+                    )
+                    .style.display =
+                    'none';
 
             }
 
@@ -1003,6 +1113,140 @@
                     consultarEstadoAlerta,
                     5000
                 );
+
+        }
+
+        async function calcularRutaCiudadano() {
+
+            if (
+                !marcadorCiudadano ||
+                !marcadorPolicia
+            ) {
+                return;
+            }
+
+
+            const ciudadano =
+                marcadorCiudadano.getLatLng();
+
+            const policia =
+                marcadorPolicia.getLatLng();
+
+
+            try {
+
+                const url =
+                    'https://router.project-osrm.org/route/v1/driving/' +
+                    policia.lng + ',' +
+                    policia.lat + ';' +
+                    ciudadano.lng + ',' +
+                    ciudadano.lat +
+                    '?overview=full&geometries=geojson';
+
+
+                const respuesta =
+                    await fetch(url);
+
+
+                const datos =
+                    await respuesta.json();
+
+
+                if (
+                    !datos.routes ||
+                    datos.routes.length === 0
+                ) {
+                    return;
+                }
+
+
+                const ruta =
+                    datos.routes[0];
+
+
+                const coordenadas =
+                    ruta.geometry.coordinates.map(
+                        function(coordenada) {
+
+                            return [
+                                coordenada[1],
+                                coordenada[0]
+                            ];
+
+                        }
+                    );
+
+
+                if (rutaPoliciaCiudadano) {
+
+                    mapa.removeLayer(
+                        rutaPoliciaCiudadano
+                    );
+
+                }
+
+
+                rutaPoliciaCiudadano =
+                    L.polyline(
+                        coordenadas, {
+                            weight: 5
+                        }
+                    )
+                    .addTo(mapa);
+
+
+                const distanciaKm =
+                    ruta.distance / 1000;
+
+
+                const minutos =
+                    Math.ceil(
+                        ruta.duration / 60
+                    );
+
+
+                document
+                    .getElementById(
+                        'distanciaPolicia'
+                    )
+                    .textContent =
+                    distanciaKm.toFixed(2) +
+                    ' km';
+
+
+                document
+                    .getElementById(
+                        'tiempoPolicia'
+                    )
+                    .textContent =
+                    minutos +
+                    ' min';
+
+
+                document
+                    .getElementById(
+                        'filaDistancia'
+                    )
+                    .style.display =
+                    'block';
+
+
+                document
+                    .getElementById(
+                        'filaTiempo'
+                    )
+                    .style.display =
+                    'block';
+
+
+            } catch (error) {
+
+                console.error(
+                    'No se pudo calcular la ruta del policía:',
+                    error
+                );
+
+            }
 
         }
 

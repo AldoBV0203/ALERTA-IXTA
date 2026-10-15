@@ -88,4 +88,9 @@ Route::middleware('auth:sanctum')->group(function () {
         '/mis-alertas/{id}/estado',
         [AlertaController::class, 'estado']
     );
+
+    Route::get(
+        '/policia/servicio-actual',
+        [PoliciaController::class, 'servicioActual']
+    );
 });
