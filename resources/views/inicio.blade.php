@@ -276,6 +276,10 @@
 
         let rutaPoliciaCiudadano = null;
 
+        let intervaloUbicacionCiudadano = null;
+
+        let ubicacionManualCiudadano = false;
+
 
         const iconoCiudadano = L.divIcon({
             className: '',
@@ -576,11 +580,18 @@
                     precisionActual =
                         null;
 
+                    ubicacionManualCiudadano =
+                        true;
+
 
                     actualizarMarcadorCiudadano(
                         latitudActual,
                         longitudActual
                     );
+
+                    if (idAlertaActual !== null) {
+                        enviarUbicacionCiudadano();
+                    }
 
 
                     texto.textContent =
@@ -632,6 +643,217 @@
                 ],
                 16
             );
+
+        }
+
+        async function enviarUbicacionCiudadano() {
+
+            if (
+                idAlertaActual === null ||
+                latitudActual === null ||
+                longitudActual === null
+            ) {
+                return;
+            }
+
+
+            try {
+
+                const respuesta =
+                    await fetch(
+                        API +
+                        '/mis-alertas/' +
+                        idAlertaActual +
+                        '/ubicacion', {
+
+                            method: 'POST',
+
+                            headers: {
+
+                                'Authorization': 'Bearer ' +
+                                    token,
+
+                                'Content-Type': 'application/json',
+
+                                'Accept': 'application/json'
+
+                            },
+
+                            body: JSON.stringify({
+
+                                latitud: latitudActual,
+
+                                longitud: longitudActual,
+
+                                precision_m: precisionActual
+
+                            })
+
+                        }
+                    );
+
+
+                if (
+                    respuesta.status ===
+                    409
+                ) {
+
+                    detenerSeguimientoUbicacionCiudadano();
+
+                    return;
+
+                }
+
+
+                if (!respuesta.ok) {
+
+                    console.error(
+                        'No fue posible actualizar la ubicación del ciudadano.'
+                    );
+
+                }
+
+
+            } catch (error) {
+
+                console.error(
+                    'Error enviando ubicación del ciudadano:',
+                    error
+                );
+
+            }
+
+        }
+
+
+
+        function actualizarUbicacionCiudadano() {
+
+            if (
+                idAlertaActual === null
+            ) {
+                return;
+            }
+
+
+            /*
+             * Si la ubicación fue corregida manualmente,
+             * no volvemos a pedir la ubicación de Chrome.
+             * Solamente enviamos el punto de prueba actual.
+             */
+            if (
+                ubicacionManualCiudadano
+            ) {
+
+                enviarUbicacionCiudadano();
+
+                return;
+
+            }
+
+
+            if (
+                !navigator.geolocation
+            ) {
+                return;
+            }
+
+
+            navigator.geolocation.getCurrentPosition(
+
+                async function(
+                        posicion
+                    ) {
+
+                        latitudActual =
+                            posicion.coords.latitude;
+
+                        longitudActual =
+                            posicion.coords.longitude;
+
+                        precisionActual =
+                            posicion.coords.accuracy;
+
+
+                        actualizarMarcadorCiudadano(
+                            latitudActual,
+                            longitudActual
+                        );
+
+
+                        await enviarUbicacionCiudadano();
+
+                    },
+
+                    function(
+                        error
+                    ) {
+
+                        console.error(
+                            'No fue posible actualizar la ubicación:',
+                            error
+                        );
+
+                    },
+
+                    {
+
+                        enableHighAccuracy: true,
+
+                        timeout: 10000,
+
+                        maximumAge: 5000
+
+                    }
+
+            );
+
+        }
+
+
+
+        function iniciarSeguimientoUbicacionCiudadano() {
+
+            if (
+                intervaloUbicacionCiudadano
+            ) {
+
+                clearInterval(
+                    intervaloUbicacionCiudadano
+                );
+
+            }
+
+
+            intervaloUbicacionCiudadano =
+                setInterval(
+                    function() {
+
+                        actualizarUbicacionCiudadano();
+
+                    },
+                    10000
+                );
+
+        }
+
+
+
+        function detenerSeguimientoUbicacionCiudadano() {
+
+            if (
+                intervaloUbicacionCiudadano
+            ) {
+
+                clearInterval(
+                    intervaloUbicacionCiudadano
+                );
+
+
+                intervaloUbicacionCiudadano =
+                    null;
+
+            }
 
         }
 
@@ -757,8 +979,9 @@
 
                 await consultarEstadoAlerta();
 
-
                 iniciarActualizacionAutomatica();
+
+                iniciarSeguimientoUbicacionCiudadano();
 
 
             } catch (error) {

@@ -265,6 +265,15 @@
                 <button
                     type="button"
                     class="boton boton-secundario"
+                    onclick="volverAUbicacionPolicia()">
+
+                    Volver a mi ubicación
+
+                </button>
+
+                <button
+                    type="button"
+                    class="boton boton-secundario"
                     onclick="corregirUbicacionPolicia()">
                     Corregir mi ubicación para prueba
                 </button>
@@ -347,9 +356,18 @@
 
         let ubicacionManual = false;
 
+        let operacionPoliciaEnCurso = false;
+
+        let modoMapaPolicia = 'POLICIA';
+
+        let mostrarRutaCompletaUnaVez = false;
+
+        let seguirPoliciaEnMapa = true;
+
         let rutaPolicia = null;
 
         let latitudDestino = null;
+
         let longitudDestino = null;
 
         const iconoCiudadano = L.divIcon({
@@ -538,6 +556,69 @@
                     mapaPolicia
                 );
 
+            /*
+             * Si el policía mueve manualmente
+             * el mapa durante un servicio,
+             * dejamos de seguirlo automáticamente.
+             */
+            mapaPolicia.on(
+                'dragstart',
+                function() {
+
+                    if (
+                        modoMapaPolicia ===
+                        'SERVICIO'
+                    ) {
+
+                        seguirPoliciaEnMapa =
+                            false;
+
+                    }
+
+                }
+            );
+
+
+            /*
+             * También detectamos otras interacciones
+             * manuales sobre el mapa.
+             */
+            mapaPolicia
+                .getContainer()
+                .addEventListener(
+                    'pointerdown',
+                    function() {
+
+                        if (
+                            modoMapaPolicia ===
+                            'SERVICIO'
+                        ) {
+
+                            seguirPoliciaEnMapa =
+                                false;
+
+                        }
+
+                    }
+                );
+
+            mapaPolicia.on(
+                'dragstart',
+                function() {
+
+                    if (
+                        modoMapaPolicia ===
+                        'SERVICIO'
+                    ) {
+
+                        seguirPoliciaEnMapa =
+                            false;
+
+                    }
+
+                }
+            );
+
         }
 
         async function cargarServicioActual() {
@@ -707,16 +788,6 @@
 
             }
 
-
-            mapaPolicia.setView(
-                [
-                    latitud,
-                    longitud
-                ],
-                16
-            );
-
-
             if (
                 latitudPolicia !== null &&
                 longitudPolicia !== null
@@ -867,6 +938,37 @@
             idAlertaSeleccionada =
                 idAlerta;
 
+            modoMapaPolicia =
+                'REVISANDO';
+
+            const detallePanel =
+                document.getElementById(
+                    'detalleAlerta'
+                );
+
+
+            const btnAceptar =
+                document.getElementById(
+                    'btnAceptar'
+                );
+
+
+            detallePanel
+                .classList
+                .remove('oculto');
+
+
+            btnAceptar.style.display =
+                'block';
+
+
+            btnAceptar.disabled =
+                true;
+
+
+            btnAceptar.textContent =
+                'Cargando alerta...';
+
 
             document
                 .querySelectorAll(
@@ -945,6 +1047,30 @@
                 )
                 .textContent =
                 alerta.estado;
+
+
+
+
+            if (
+                alerta.estado ===
+                'NUEVA'
+            ) {
+
+                btnAceptar.style.display =
+                    'block';
+
+                btnAceptar.disabled =
+                    false;
+
+                btnAceptar.textContent =
+                    'Aceptar alerta';
+
+            } else {
+
+                btnAceptar.style.display =
+                    'none';
+
+            }
 
 
             if (
@@ -1073,6 +1199,16 @@
                 .style.display =
                 'none';
 
+            idServicioActual =
+                idAlertaSeleccionada;
+
+            modoMapaPolicia =
+                'SERVICIO';
+
+            mostrarRutaCompletaUnaVez = true;
+            seguirPoliciaEnMapa = true;
+
+            await cargarServicioActual();
 
             await cargarAlertas();
 
@@ -1163,7 +1299,8 @@
                             latitudPolicia,
                             longitudPolicia
                         ], {
-                            icon: iconoPolicia
+                            icon: iconoPolicia,
+                            zIndexOffset: 1000
                         }
                     )
                     .addTo(
@@ -1193,8 +1330,25 @@
                 ', ' +
                 longitudPolicia.toFixed(6);
 
+            if (
+                modoMapaPolicia ===
+                'POLICIA'
+            ) {
+
+                mapaPolicia.setView(
+                    [
+                        latitudPolicia,
+                        longitudPolicia
+                    ],
+                    16
+                );
+
+            }
+
 
             if (
+                modoMapaPolicia ===
+                'SERVICIO' &&
                 latitudDestino !== null &&
                 longitudDestino !== null
             ) {
@@ -1293,6 +1447,12 @@
                 setInterval(
                     async function() {
 
+                            if (
+                                operacionPoliciaEnCurso
+                            ) {
+                                return;
+                            }
+
                             if (!ubicacionManual) {
 
                                 navigator.geolocation
@@ -1340,6 +1500,54 @@
 
                         5000
                 );
+
+        }
+
+        function volverAUbicacionPolicia() {
+
+            if (
+                latitudPolicia === null ||
+                longitudPolicia === null
+            ) {
+                return;
+            }
+
+
+            /*
+             * Si está atendiendo un servicio,
+             * regresamos al policía y volvemos
+             * a activar su seguimiento.
+             */
+            if (
+                idServicioActual
+            ) {
+
+                modoMapaPolicia =
+                    'SERVICIO';
+
+
+                seguirPoliciaEnMapa =
+                    true;
+
+            } else {
+
+                modoMapaPolicia =
+                    'POLICIA';
+
+
+                seguirPoliciaEnMapa =
+                    true;
+
+            }
+
+
+            mapaPolicia.setView(
+                [
+                    latitudPolicia,
+                    longitudPolicia
+                ],
+                16
+            );
 
         }
 
@@ -1459,11 +1667,64 @@
                     );
 
 
-                mapaPolicia.fitBounds(
-                    rutaPolicia.getBounds(), {
-                        padding: [30, 30]
-                    }
-                );
+                if (
+                    mostrarRutaCompletaUnaVez
+                ) {
+
+                    mapaPolicia.fitBounds(
+                        rutaPolicia.getBounds(), {
+                            padding: [
+                                30,
+                                30
+                            ]
+                        }
+                    );
+
+
+                    mostrarRutaCompletaUnaVez =
+                        false;
+
+
+                    setTimeout(
+                        function() {
+
+                            if (
+                                modoMapaPolicia ===
+                                'SERVICIO' &&
+                                seguirPoliciaEnMapa &&
+                                latitudPolicia !== null &&
+                                longitudPolicia !== null
+                            ) {
+
+                                mapaPolicia.setView(
+                                    [
+                                        latitudPolicia,
+                                        longitudPolicia
+                                    ],
+                                    16
+                                );
+
+                            }
+
+                        },
+                        2000
+                    );
+
+
+                } else if (
+                    modoMapaPolicia === 'SERVICIO' && seguirPoliciaEnMapa && latitudPolicia !== null &&
+                    longitudPolicia !== null
+                ) {
+
+                    mapaPolicia.setView(
+                        [
+                            latitudPolicia,
+                            longitudPolicia
+                        ],
+                        16
+                    );
+
+                }
 
 
                 const distanciaKm =
@@ -1558,7 +1819,10 @@
 
         async function finalizarAtencion() {
 
-            if (!idServicioActual) {
+            if (
+                !idServicioActual ||
+                operacionPoliciaEnCurso
+            ) {
                 return;
             }
 
@@ -1586,7 +1850,13 @@
             }
 
 
-            boton.disabled = true;
+            operacionPoliciaEnCurso =
+                true;
+
+
+            boton.disabled =
+                true;
+
 
             boton.textContent =
                 'Finalizando...';
@@ -1594,27 +1864,34 @@
 
             try {
 
-                const respuesta = await fetch(
-                    API +
-                    '/monitoreo/alertas/' +
-                    idServicioActual +
-                    '/cerrar', {
-                        method: 'POST',
+                const respuesta =
+                    await fetch(
+                        API +
+                        '/monitoreo/alertas/' +
+                        idServicioActual +
+                        '/cerrar', {
 
-                        headers: {
-                            'Authorization': 'Bearer ' +
-                                tokenPolicia,
+                            method: 'POST',
 
-                            'Content-Type': 'application/json',
+                            headers: {
 
-                            'Accept': 'application/json'
-                        },
+                                'Authorization': 'Bearer ' +
+                                    tokenPolicia,
 
-                        body: JSON.stringify({
-                            observaciones: 'La atención de la alerta fue concluida por el policía.'
-                        })
-                    }
-                );
+                                'Content-Type': 'application/json',
+
+                                'Accept': 'application/json'
+
+                            },
+
+                            body: JSON.stringify({
+
+                                observaciones: 'La atención de la alerta fue concluida por el policía.'
+
+                            })
+
+                        }
+                    );
 
 
                 const datos =
@@ -1626,25 +1903,22 @@
                     mensaje.style.color =
                         '#9F2241';
 
+
                     mensaje.textContent =
                         datos.message ??
                         'No fue posible cerrar la alerta.';
 
-                    boton.disabled = false;
+
+                    boton.disabled =
+                        false;
+
 
                     boton.textContent =
                         'Finalizar atención';
 
+
                     return;
                 }
-
-
-                document
-                    .getElementById(
-                        'estadoServicio'
-                    )
-                    .textContent =
-                    'CERRADA';
 
 
                 mensaje.style.color =
@@ -1655,17 +1929,99 @@
                     'Atención finalizada correctamente.';
 
 
+                /*
+                 * Limpiar el servicio terminado.
+                 */
+
+                if (
+                    marcadorAlerta
+                ) {
+
+                    mapaPolicia.removeLayer(
+                        marcadorAlerta
+                    );
+
+                    marcadorAlerta =
+                        null;
+
+                }
+
+
+                if (
+                    rutaPolicia
+                ) {
+
+                    mapaPolicia.removeLayer(
+                        rutaPolicia
+                    );
+
+                    rutaPolicia =
+                        null;
+
+                }
+
+
+                latitudDestino =
+                    null;
+
+
+                longitudDestino =
+                    null;
+
+
+                idServicioActual =
+                    null;
+
+
+                idAlertaSeleccionada =
+                    null;
+
+
+                document
+                    .getElementById(
+                        'servicioActual'
+                    )
+                    .classList
+                    .add('oculto');
+
+
+                document
+                    .getElementById(
+                        'detalleAlerta'
+                    )
+                    .classList
+                    .add('oculto');
+
+
                 boton.style.display =
                     'none';
 
 
-                if (intervaloUbicacion) {
+                boton.disabled =
+                    false;
 
-                    clearInterval(
-                        intervaloUbicacion
+
+                boton.textContent =
+                    'Finalizar atención';
+
+
+                /*
+                 * Después del servicio queda
+                 * únicamente el policía.
+                 */
+
+                if (
+                    latitudPolicia !== null &&
+                    longitudPolicia !== null
+                ) {
+
+                    mapaPolicia.setView(
+                        [
+                            latitudPolicia,
+                            longitudPolicia
+                        ],
+                        16
                     );
-
-                    intervaloUbicacion = null;
 
                 }
 
@@ -1675,23 +2031,53 @@
 
             } catch (error) {
 
+                console.error(
+                    'Error cerrando alerta:',
+                    error
+                );
+
+
                 mensaje.style.color =
                     '#9F2241';
 
 
                 mensaje.textContent =
-                    'No fue posible conectar con el servidor.';
+                    'No fue posible finalizar la atención. Intenta nuevamente.';
 
 
-                boton.disabled = false;
+                boton.disabled =
+                    false;
 
 
                 boton.textContent =
                     'Finalizar atención';
 
+
+            } finally {
+
+                operacionPoliciaEnCurso =
+                    false;
+
             }
 
         }
+
+        // Actualizar automáticamente las alertas pendientes.
+        setInterval(
+            function() {
+
+                if (
+                    tokenPolicia &&
+                    !operacionPoliciaEnCurso
+                ) {
+
+                    cargarAlertas();
+
+                }
+
+            },
+            10000
+        );
     </script>
 
 </body>

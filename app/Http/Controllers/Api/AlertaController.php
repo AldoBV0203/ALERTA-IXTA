@@ -277,4 +277,102 @@ class AlertaController extends Controller
             ],
         ]);
     }
+
+    public function actualizarUbicacion(
+        Request $request,
+        int $id
+    ) {
+        $usuario = $request->user();
+
+
+        $alerta = Alerta::where(
+            'id_alerta',
+            $id
+        )
+            ->where(
+                'id_usuario',
+                $usuario->id
+            )
+            ->first();
+
+
+        if (!$alerta) {
+
+            return response()->json([
+                'message' =>
+                'La alerta no existe o no pertenece al usuario.',
+            ], 404);
+        }
+
+
+        if (
+            $alerta->estado ===
+            'CERRADA'
+        ) {
+
+            return response()->json([
+                'message' =>
+                'La alerta ya está cerrada.',
+            ], 409);
+        }
+
+
+        $datos = $request->validate([
+
+            'latitud' =>
+            'required|numeric|between:-90,90',
+
+            'longitud' =>
+            'required|numeric|between:-180,180',
+
+            'precision_m' =>
+            'nullable|numeric|min:0',
+
+        ]);
+
+
+        $ubicacion =
+            UbicacionAlerta::create([
+
+                'id_alerta' =>
+                $alerta->id_alerta,
+
+                'latitud' =>
+                $datos['latitud'],
+
+                'longitud' =>
+                $datos['longitud'],
+
+                'precision_m' =>
+                $datos['precision_m'] ?? null,
+
+                'fecha_hora' =>
+                now(),
+
+            ]);
+
+
+        return response()->json([
+
+            'message' =>
+            'Ubicación actualizada correctamente.',
+
+            'ubicacion' => [
+
+                'latitud' =>
+                $ubicacion->latitud,
+
+                'longitud' =>
+                $ubicacion->longitud,
+
+                'precision_m' =>
+                $ubicacion->precision_m,
+
+                'fecha_hora' =>
+                $ubicacion->fecha_hora,
+
+            ],
+
+        ]);
+    }
 }

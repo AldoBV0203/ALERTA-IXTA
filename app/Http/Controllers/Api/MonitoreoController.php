@@ -592,6 +592,91 @@ class MonitoreoController extends Controller
         ]);
     }
 
+    public function policias(Request $request)
+    {
+        $personal = $request->user();
+
+        if (
+            !$personal ||
+            !in_array(
+                $personal->rol,
+                [
+                    'OPERADOR',
+                    'SUPERVISOR',
+                    'ADMINISTRADOR'
+                ]
+            )
+        ) {
+            return response()->json([
+                'message' => 'No autorizado.'
+            ], 403);
+        }
+
+
+        $policias = Operador::where(
+            'rol',
+            'POLICIA'
+        )
+            ->where(
+                'activo',
+                true
+            )
+            ->orderBy(
+                'nombre'
+            )
+            ->get()
+            ->map(function ($policia) {
+
+                $ubicacion = null;
+
+                if (
+                    $policia->latitud_actual !== null &&
+                    $policia->longitud_actual !== null
+                ) {
+
+                    $ubicacion = [
+                        'latitud' =>
+                        (float) $policia->latitud_actual,
+
+                        'longitud' =>
+                        (float) $policia->longitud_actual
+                    ];
+                }
+
+
+                return [
+
+                    'id_operador' =>
+                    $policia->id_operador,
+
+                    'nombre' =>
+                    $policia->nombre,
+
+                    'disponible' =>
+                    (bool) $policia->disponible,
+
+                    'ubicacion' =>
+                    $ubicacion,
+
+                    'precision_m' =>
+                    $policia->precision_m !== null
+                        ? (float) $policia->precision_m
+                        : null,
+
+                    'ubicacion_actualizada_at' =>
+                    $policia->ubicacion_actualizada_at
+                        ? $policia->ubicacion_actualizada_at
+                        ->toIso8601String()
+                        : null
+                ];
+            });
+
+
+        return response()->json([
+            'policias' => $policias
+        ]);
+    }
+
     // Registrar una acción en la auditoría.
 
     private function registrarAuditoria(

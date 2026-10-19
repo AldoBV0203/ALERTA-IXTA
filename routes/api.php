@@ -54,6 +54,11 @@ Route::middleware('auth:sanctum')->group(function () {
         'alertas'
     ]);
 
+    Route::get(
+        '/monitoreo/policias',
+        [MonitoreoController::class, 'policias']
+    );
+
     Route::get('/monitoreo/alertas/{id}', [
         MonitoreoController::class,
         'detalle'
@@ -87,6 +92,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get(
         '/mis-alertas/{id}/estado',
         [AlertaController::class, 'estado']
+    );
+
+    Route::post(
+        '/mis-alertas/{id}/ubicacion',
+        [AlertaController::class, 'actualizarUbicacion']
     );
 
     Route::get(
