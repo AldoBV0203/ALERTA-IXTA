@@ -19,23 +19,27 @@ class MonitoreoController extends Controller
     {
         $personal = $request->user();
 
-        // Un ciudadano autenticado NO puede entrar al centro de monitoreo          
 
+        // Un ciudadano autenticado NO puede entrar
+        // al centro de monitoreo.
         if (!$personal instanceof Operador) {
+
             return response()->json([
-                'message' => 'No tienes permiso para acceder al centro de monitoreo.',
+                'message' =>
+                'No tienes permiso para acceder al centro de monitoreo.',
             ], 403);
         }
+
 
         // La cuenta debe estar activa.
-
         if (!$personal->activo) {
+
             return response()->json([
-                'message' => 'La cuenta no está autorizada.',
+                'message' =>
+                'La cuenta no está autorizada.',
             ], 403);
         }
 
-        // Solo estos roles pueden entrar.
 
         $rolesPermitidos = [
             'POLICIA',
@@ -44,35 +48,123 @@ class MonitoreoController extends Controller
             'ADMINISTRADOR',
         ];
 
-        if (!in_array($personal->rol, $rolesPermitidos, true)) {
+
+        if (
+            !in_array(
+                $personal->rol,
+                $rolesPermitidos,
+                true
+            )
+        ) {
+
             return response()->json([
-                'message' => 'No tienes permisos suficientes.',
+                'message' =>
+                'No tienes permisos suficientes.',
             ], 403);
         }
 
-        // Consultar alertas.
 
-        $alertas = Alerta::with([
-            'tipo:id_tipo,nombre'
-        ])
+        // Primero consultamos todas las alertas. El centro de monitoreo podrá seguir viendo todas.
+        $alertas =
+            Alerta::with([
+                'tipo:id_tipo,nombre'
+            ])
             ->orderByDesc('id_alerta')
-            ->get()
-            ->map(function ($alerta) {
+            ->get();
 
-                return [
-                    'id_alerta' => $alerta->id_alerta,
 
-                    'folio' => $alerta->folio,
+        //Si quien consulta es un policía, solamente verá las alertas nuevas de Seguridad para las que él sea el policía disponible más cercano.
+        if (
+            $personal->rol ===
+            'POLICIA'
+        ) {
 
-                    'tipo' => $alerta->tipo?->nombre,
+            // Si ya está atendiendo otra alerta, no debe recibir nuevas ofertas.             
+            if (!$personal->disponible) {
 
-                    'fecha_hora' => $alerta->fecha_hora,
+                return response()->json([
+                    'alertas' => [],
+                ]);
+            }
 
-                    'prioridad' => $alerta->prioridad,
 
-                    'estado' => $alerta->estado,
-                ];
-            });
+            $alertas =
+                $alertas
+                ->filter(
+                    function ($alerta) use (
+                        $personal
+                    ) {
+
+                        if (
+                            $alerta->estado !==
+                            'NUEVA'
+                        ) {
+                            return false;
+                        }
+
+
+                        if (
+                            $alerta->tipo?->nombre !==
+                            'Seguridad'
+                        ) {
+                            return false;
+                        }
+
+
+                        $policiaEnOferta =
+                            $this
+                            ->obtenerPoliciaEnOferta(
+                                $alerta
+                            );
+
+
+                        if (!$policiaEnOferta) {
+                            return false;
+                        }
+
+
+                        return
+                            (int)
+                            $policiaEnOferta
+                                ->id_operador
+                            ===
+                            (int)
+                            $personal
+                                ->id_operador;
+                    }
+                )
+                ->values();
+        }
+
+
+        $alertas =
+            $alertas->map(
+                function ($alerta) {
+
+                    return [
+
+                        'id_alerta' =>
+                        $alerta->id_alerta,
+
+                        'folio' =>
+                        $alerta->folio,
+
+                        'tipo' =>
+                        $alerta->tipo?->nombre,
+
+                        'fecha_hora' =>
+                        $alerta->fecha_hora,
+
+                        'prioridad' =>
+                        $alerta->prioridad,
+
+                        'estado' =>
+                        $alerta->estado,
+
+                    ];
+                }
+            );
+
 
         return response()->json([
             'alertas' => $alertas,
@@ -257,6 +349,62 @@ class MonitoreoController extends Controller
             return response()->json([
                 'message' => 'El policía ya se encuentra atendiendo otra alerta.',
             ], 409);
+        }
+
+        // Comprobar que la alerta exista antes de revisar la asignación.
+        $alertaParaOferta =
+            Alerta::where(
+                'id_alerta',
+                $id
+            )
+            ->first();
+
+
+        if (!$alertaParaOferta) {
+
+            return response()->json([
+                'message' =>
+                'La alerta no existe.',
+            ], 404);
+        }
+
+
+        // Solamente una alerta NUEVA puede estar disponible.
+        if (
+            $alertaParaOferta->estado !==
+            'NUEVA'
+        ) {
+
+            return response()->json([
+                'message' =>
+                'La alerta ya fue aceptada o cambió de estado.',
+            ], 409);
+        }
+
+
+        // Verificar que este policía sea actualmente el más cercano.
+        $policiaEnOferta =
+            $this
+            ->obtenerPoliciaEnOferta(
+                $alertaParaOferta
+            );
+
+
+        if (
+            !$policiaEnOferta ||
+            (int)
+            $policiaEnOferta->id_operador
+            !==
+            (int)
+            $personal->id_operador
+        ) {
+
+            return response()->json([
+
+                'message' =>
+                'El tiempo de esta oferta terminó o la alerta fue enviada a otro policía.',
+
+            ], 403);
         }
 
         // Usamos transacción para que el cambio de estado y el seguimiento se guarden juntos.
@@ -736,6 +884,427 @@ class MonitoreoController extends Controller
         return response()->json([
             'policias' => $policias
         ]);
+    }
+
+    /*
+    Buscar al policía disponible más cercano a una alerta.
+ */
+    private function obtenerPoliciaMasCercano(
+        Alerta $alerta,
+        array $excluirIds = []
+    ): ?Operador {
+
+        $ultimaUbicacion =
+            UbicacionAlerta::where(
+                'id_alerta',
+                $alerta->id_alerta
+            )
+            ->orderByDesc('id')
+            ->first();
+
+
+        $latitudCiudadano =
+            $ultimaUbicacion
+            ? (float) $ultimaUbicacion->latitud
+            : (float) $alerta->latitud;
+
+
+        $longitudCiudadano =
+            $ultimaUbicacion
+            ? (float) $ultimaUbicacion->longitud
+            : (float) $alerta->longitud;
+
+
+        $limiteUbicacion =
+            now()->subMinutes(2);
+
+
+        $consultaPolicias =
+            Operador::where(
+                'rol',
+                'POLICIA'
+            )
+            ->where(
+                'activo',
+                true
+            )
+            ->where(
+                'disponible',
+                true
+            );
+
+
+        /*
+     * No volver a ofrecer la misma
+     * alerta a policías cuyo turno
+     * ya terminó.
+     */
+        if (
+            count($excluirIds) > 0
+        ) {
+
+            $consultaPolicias
+                ->whereNotIn(
+                    'id_operador',
+                    $excluirIds
+                );
+        }
+
+
+        $policias =
+            $consultaPolicias
+            ->get()
+            ->filter(
+                function ($policia) use (
+                    $limiteUbicacion
+                ) {
+
+                    if (
+                        $policia->latitud_actual ===
+                        null ||
+                        $policia->longitud_actual ===
+                        null ||
+                        $policia->ubicacion_actualizada_at ===
+                        null
+                    ) {
+                        return false;
+                    }
+
+
+                    return
+                        $policia
+                        ->ubicacion_actualizada_at
+                        ->greaterThanOrEqualTo(
+                            $limiteUbicacion
+                        );
+                }
+            );
+
+
+        $policiaMasCercano =
+            null;
+
+
+        $menorDistancia =
+            null;
+
+
+        foreach (
+            $policias as $policia
+        ) {
+
+            $distancia =
+                $this
+                ->calcularDistanciaMetros(
+                    (float)
+                    $policia->latitud_actual,
+
+                    (float)
+                    $policia->longitud_actual,
+
+                    $latitudCiudadano,
+
+                    $longitudCiudadano
+                );
+
+
+            if (
+                $menorDistancia === null ||
+                $distancia <
+                $menorDistancia
+            ) {
+
+                $menorDistancia =
+                    $distancia;
+
+
+                $policiaMasCercano =
+                    $policia;
+            }
+        }
+
+
+        return $policiaMasCercano;
+    }
+
+    /*
+ * Obtener al policía que tiene
+ * actualmente la oferta de la alerta.
+ */
+    private function obtenerPoliciaEnOferta(
+        Alerta $alerta
+    ): ?Operador {
+
+        return DB::transaction(
+            function () use ($alerta) {
+
+                /*
+             * Bloquear brevemente la alerta
+             * para evitar que dos policías
+             * reciban una nueva oferta
+             * al mismo tiempo.
+             */
+                $alertaBloqueada =
+                    Alerta::where(
+                        'id_alerta',
+                        $alerta->id_alerta
+                    )
+                    ->lockForUpdate()
+                    ->first();
+
+
+                if (
+                    !$alertaBloqueada ||
+                    $alertaBloqueada->estado !==
+                    'NUEVA'
+                ) {
+
+                    return null;
+                }
+
+
+                /*
+             * Buscar la oferta más reciente.
+             */
+                $ultimaOferta =
+                    SeguimientoAlerta::where(
+                        'id_alerta',
+                        $alertaBloqueada->id_alerta
+                    )
+                    ->where(
+                        'accion',
+                        'OFERTA_ALERTA'
+                    )
+                    ->orderByDesc('id')
+                    ->first();
+
+
+                if ($ultimaOferta) {
+
+                    $vence =
+                        \Carbon\Carbon::parse(
+                            $ultimaOferta->fecha_hora
+                        )
+                        ->addSeconds(20);
+
+
+                    $policiaOferta =
+                        Operador::where(
+                            'id_operador',
+                            $ultimaOferta->id_operador
+                        )
+                        ->where(
+                            'rol',
+                            'POLICIA'
+                        )
+                        ->where(
+                            'activo',
+                            true
+                        )
+                        ->where(
+                            'disponible',
+                            true
+                        )
+                        ->first();
+
+
+                    /*
+                 * Si todavía no pasaron
+                 * los 20 segundos, la oferta
+                 * sigue perteneciendo al
+                 * mismo policía.
+                 */
+                    if (
+                        now()->lt($vence) &&
+                        $policiaOferta
+                    ) {
+
+                        return $policiaOferta;
+                    }
+
+
+                    /*
+                 * La oferta venció.
+                 */
+                    $vencimientoRegistrado =
+                        SeguimientoAlerta::where(
+                            'id_alerta',
+                            $alertaBloqueada->id_alerta
+                        )
+                        ->where(
+                            'id_operador',
+                            $ultimaOferta->id_operador
+                        )
+                        ->where(
+                            'accion',
+                            'OFERTA_VENCIDA'
+                        )
+                        ->where(
+                            'id',
+                            '>',
+                            $ultimaOferta->id
+                        )
+                        ->exists();
+
+
+                    if (
+                        !$vencimientoRegistrado
+                    ) {
+
+                        SeguimientoAlerta::create([
+
+                            'id_alerta' =>
+                            $alertaBloqueada->id_alerta,
+
+                            'id_operador' =>
+                            $ultimaOferta->id_operador,
+
+                            'accion' =>
+                            'OFERTA_VENCIDA',
+
+                            'observaciones' =>
+                            'El policía no aceptó la alerta dentro de los 20 segundos.',
+
+                        ]);
+                    }
+                }
+
+
+                /*
+             * Obtener policías a los que ya
+             * se les ofreció esta alerta.
+             */
+                $policiasIntentados =
+                    SeguimientoAlerta::where(
+                        'id_alerta',
+                        $alertaBloqueada->id_alerta
+                    )
+                    ->where(
+                        'accion',
+                        'OFERTA_ALERTA'
+                    )
+                    ->pluck(
+                        'id_operador'
+                    )
+                    ->map(
+                        function ($id) {
+
+                            return (int) $id;
+                        }
+                    )
+                    ->unique()
+                    ->values()
+                    ->all();
+
+
+                /*
+             * Buscar al siguiente más cercano,
+             * excluyendo a los anteriores.
+             */
+                $siguientePolicia =
+                    $this
+                    ->obtenerPoliciaMasCercano(
+                        $alertaBloqueada,
+                        $policiasIntentados
+                    );
+
+
+                if (!$siguientePolicia) {
+
+                    return null;
+                }
+
+
+                /*
+             * Registrar la nueva oferta.
+             */
+                SeguimientoAlerta::create([
+
+                    'id_alerta' =>
+                    $alertaBloqueada->id_alerta,
+
+                    'id_operador' =>
+                    $siguientePolicia->id_operador,
+
+                    'accion' =>
+                    'OFERTA_ALERTA',
+
+                    'observaciones' =>
+                    'Alerta ofrecida al policía durante 20 segundos.',
+
+                ]);
+
+
+                return $siguientePolicia;
+            }
+        );
+    }
+
+
+    // Calcular distancia aproximada entre dos coordenadas.
+    private function calcularDistanciaMetros(
+        float $latitud1,
+        float $longitud1,
+        float $latitud2,
+        float $longitud2
+    ): float {
+
+        $radioTierra =
+            6371000;
+
+
+        $lat1 =
+            deg2rad(
+                $latitud1
+            );
+
+
+        $lat2 =
+            deg2rad(
+                $latitud2
+            );
+
+
+        $diferenciaLatitud =
+            deg2rad(
+                $latitud2 -
+                    $latitud1
+            );
+
+
+        $diferenciaLongitud =
+            deg2rad(
+                $longitud2 -
+                    $longitud1
+            );
+
+
+        $a =
+            sin(
+                $diferenciaLatitud / 2
+            ) ** 2
+            +
+            cos($lat1)
+            *
+            cos($lat2)
+            *
+            sin(
+                $diferenciaLongitud / 2
+            ) ** 2;
+
+
+        $c =
+            2
+            *
+            atan2(
+                sqrt($a),
+                sqrt(1 - $a)
+            );
+
+
+        return
+            $radioTierra *
+            $c;
     }
 
     // Registrar una acción en la auditoría.
