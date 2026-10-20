@@ -504,6 +504,12 @@
 
                 function(posicion) {
 
+                    if (
+                        ubicacionManualCiudadano
+                    ) {
+                        return;
+                    }
+
                     latitudActual =
                         posicion.coords.latitude;
 
@@ -588,6 +594,13 @@
                         latitudActual,
                         longitudActual
                     );
+
+                    //si ya existe un policia en camino recalcula la ruta
+                    if (
+                        marcadorPolicia
+                    ) {
+                        calcularRutaCiudadano();
+                    }
 
                     if (idAlertaActual !== null) {
                         enviarUbicacionCiudadano();
@@ -736,11 +749,7 @@
             }
 
 
-            /*
-             * Si la ubicación fue corregida manualmente,
-             * no volvemos a pedir la ubicación de Chrome.
-             * Solamente enviamos el punto de prueba actual.
-             */
+            // Si la ubicación fue corregida manualmente, no volvemos a pedir la ubicación de Chrome. Solamente enviamos el punto de prueba actual.
             if (
                 ubicacionManualCiudadano
             ) {
@@ -832,7 +841,7 @@
                         actualizarUbicacionCiudadano();
 
                     },
-                    10000
+                    5000
                 );
 
         }
@@ -1170,6 +1179,7 @@
 
 
             if (
+                !ubicacionManualCiudadano &&
                 alerta.ubicacion &&
                 alerta.ubicacion.latitud &&
                 alerta.ubicacion.longitud

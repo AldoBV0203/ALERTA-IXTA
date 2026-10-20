@@ -219,7 +219,7 @@
 
 
         .barra-superior {
-            height: 72px;
+            height: 64px;
 
             background: white;
 
@@ -235,7 +235,7 @@
 
             position: fixed;
             top: 0;
-            left: 190px;
+            left: 170px;
             right: 0;
 
             z-index: 1000;
@@ -312,7 +312,7 @@
         */
 
         .barra-lateral {
-            width: 190px;
+            width: 170px;
 
             position: fixed;
             left: 0;
@@ -435,10 +435,10 @@
         */
 
         .contenido {
-            margin-left: 190px;
+            margin-left: 170px;
 
             padding:
-                96px 28px 35px 28px;
+                80px 20px 25px 20px;
         }
 
 
@@ -491,7 +491,7 @@
 
             border-radius: 8px;
 
-            padding: 19px;
+            padding: 14px;
 
             min-height: 105px;
 
@@ -572,10 +572,10 @@
 
 
         .panel-encabezado {
-            min-height: 58px;
+            min-height: 48px;
 
             padding:
-                15px 18px;
+                10px 14px;
 
             display: flex;
             align-items: center;
@@ -600,6 +600,98 @@
             font-size: 12px;
         }
 
+        .operacion-principal {
+            display: grid;
+            grid-template-columns: minmax(0, 3fr) minmax(260px, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+
+        .panel-alertas-activas {
+            min-width: 0;
+        }
+
+
+        #listaAlertasActivas {
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+
+        .alerta-activa-item {
+            border: 1px solid #dddddd;
+            border-left: 5px solid #691C32;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            background: white;
+            transition: 0.2s;
+        }
+
+
+        .alerta-activa-item:hover {
+            background: #f7f7f7;
+            transform: translateY(-1px);
+        }
+
+
+        .alerta-activa-folio {
+            font-weight: bold;
+            font-size: 14px;
+            color: #691C32;
+        }
+
+
+        .alerta-activa-tipo {
+            margin-top: 5px;
+            font-size: 13px;
+        }
+
+
+        .alerta-activa-estado {
+            margin-top: 6px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+
+        .alerta-activa-NUEVA {
+            border-left-color: #C62828;
+        }
+
+
+        .alerta-activa-EN_CAMINO {
+            border-left-color: #1565C0;
+        }
+
+
+        .alerta-activa-EN_SITIO {
+            border-left-color: #EF6C00;
+        }
+
+
+        .sin-alertas-activas {
+            padding: 20px 10px;
+            text-align: center;
+            color: #777777;
+        }
+
+
+        @media (max-width: 1000px) {
+
+            .operacion-principal {
+                grid-template-columns: 1fr;
+            }
+
+            #listaAlertasActivas {
+                max-height: 300px;
+            }
+
+        }
+
 
         .mapa-panel {
             margin-bottom: 20px;
@@ -608,7 +700,7 @@
 
         #mapaMonitoreo {
             width: 100%;
-            height: 460px;
+            height: 400px;
         }
 
 
@@ -1250,23 +1342,59 @@
 
 
 
-            <!-- MAPA -->
+            <!-- MAPA Y ALERTAS ACTIVAS -->
 
-            <section class="panel mapa-panel">
+            <section class="operacion-principal">
 
-                <div class="panel-encabezado">
 
-                    <h3>
-                        Mapa general de operaciones
-                    </h3>
+                <!-- MAPA -->
 
-                    <span id="ultimaActualizacion">
-                        Sin actualizar
-                    </span>
+                <div class="panel mapa-panel">
+
+                    <div class="panel-encabezado">
+
+                        <h3>
+                            Mapa general de operaciones
+                        </h3>
+
+                        <span id="ultimaActualizacion">
+                            Sin actualizar
+                        </span>
+
+                    </div>
+
+                    <div id="mapaMonitoreo"></div>
 
                 </div>
 
-                <div id="mapaMonitoreo"></div>
+
+                <!-- ALERTAS ACTIVAS -->
+
+                <div class="panel panel-alertas-activas">
+
+                    <div class="panel-encabezado">
+
+                        <h3>
+                            Alertas activas
+                        </h3>
+
+                        <span id="cantidadAlertasActivas">
+                            0
+                        </span>
+
+                    </div>
+
+
+                    <div id="listaAlertasActivas">
+
+                        <div class="sin-alertas-activas">
+                            No existen alertas activas.
+                        </div>
+
+                    </div>
+
+                </div>
+
 
             </section>
 
@@ -1284,7 +1412,7 @@
                     <div class="panel-encabezado">
 
                         <h3>
-                            Alertas registradas
+                            Registro reciente
                         </h3>
 
                         <span>
@@ -1411,6 +1539,15 @@
             null;
 
         let marcadoresPolicias = [];
+
+        let rutaAlertaPolicia =
+            null;
+
+        let idAlertaSeleccionada =
+            null;
+
+        let ajustarVistaRuta =
+            false;
 
 
         /*
@@ -1815,6 +1952,9 @@
                     alertas
                 );
 
+                mostrarListaAlertasActivas(
+                    alertas
+                );
 
                 mostrarTablaAlertas(
                     alertas
@@ -1894,6 +2034,111 @@
                     alerta.estado ===
                     'CERRADA'
                 ).length;
+
+        }
+
+        function mostrarListaAlertasActivas(
+            alertas
+        ) {
+
+            const contenedor =
+                document.getElementById(
+                    'listaAlertasActivas'
+                );
+
+
+            const cantidad =
+                document.getElementById(
+                    'cantidadAlertasActivas'
+                );
+
+
+            const alertasActivas =
+                alertas.filter(
+                    function(alerta) {
+
+                        return [
+                            'NUEVA',
+                            'EN_CAMINO',
+                            'EN_SITIO'
+                        ].includes(
+                            alerta.estado
+                        );
+
+                    }
+                );
+
+
+            cantidad.textContent =
+                alertasActivas.length;
+
+
+            contenedor.innerHTML =
+                '';
+
+
+            if (
+                alertasActivas.length === 0
+            ) {
+
+                contenedor.innerHTML =
+                    `
+            <div class="sin-alertas-activas">
+                No existen alertas activas.
+            </div>
+            `;
+
+                return;
+            }
+
+
+            alertasActivas.forEach(
+                function(alerta) {
+
+                    const elemento =
+                        document.createElement(
+                            'div'
+                        );
+
+
+                    elemento.className =
+                        'alerta-activa-item ' +
+                        'alerta-activa-' +
+                        alerta.estado;
+
+
+                    elemento.innerHTML =
+                        `
+                <div class="alerta-activa-folio">
+                    ${alerta.folio}
+                </div>
+
+                <div class="alerta-activa-tipo">
+                    ${alerta.tipo}
+                </div>
+
+                <div class="alerta-activa-estado">
+                    ${alerta.estado}
+                </div>
+                `;
+
+
+                    elemento.onclick =
+                        function() {
+
+                            cargarDetalle(
+                                alerta.id_alerta
+                            );
+
+                        };
+
+
+                    contenedor.appendChild(
+                        elemento
+                    );
+
+                }
+            );
 
         }
 
@@ -2018,8 +2263,13 @@
                 alertas.filter(
                     function(alerta) {
 
-                        return alerta.estado !==
-                            'CERRADA';
+                        return [
+                            'NUEVA',
+                            'EN_CAMINO',
+                            'EN_SITIO'
+                        ].includes(
+                            alerta.estado
+                        );
 
                     }
                 );
@@ -2447,6 +2697,19 @@
         async function cargarDetalle(
             idAlerta
         ) {
+            if (
+                idAlertaSeleccionada !==
+                idAlerta
+            ) {
+
+                ajustarVistaRuta =
+                    true;
+
+            }
+
+            idAlertaSeleccionada =
+                idAlerta;
+
 
             const respuesta =
                 await fetch(
@@ -2581,6 +2844,28 @@
                 alerta
             );
 
+            mostrarRutaAlertaPolicia(
+                alerta
+            );
+
+            if (
+                alerta.policia
+            ) {
+
+                const campoPolicia =
+                    document.getElementById(
+                        'detallePolicia'
+                    );
+
+
+                if (campoPolicia) {
+
+                    campoPolicia.textContent =
+                        alerta.policia.nombre;
+
+                }
+
+            }
 
             cargarHistorial(
                 idAlerta
@@ -2590,11 +2875,7 @@
 
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | MOSTRAR UBICACIÓN
-        |--------------------------------------------------------------------------
-        */
+        // MOSTRAR UBICACIÓN
 
         function mostrarUbicacionAlerta(
             alerta
@@ -2669,18 +2950,166 @@
                 Estado:
                 ${alerta.estado}
                 `
-                )
-                .openPopup();
+                );                
 
+        }
 
-            mapaMonitoreo
-                .setView(
-                    [
-                        latitud,
-                        longitud
-                    ],
-                    16
+        async function mostrarRutaAlertaPolicia(
+            alerta
+        ) {
+
+            /*
+             * Eliminar la ruta anterior.
+             */
+            if (
+                rutaAlertaPolicia
+            ) {
+
+                mapaMonitoreo.removeLayer(
+                    rutaAlertaPolicia
                 );
+
+                rutaAlertaPolicia =
+                    null;
+
+            }
+
+
+            /*
+             * Necesitamos ubicación del ciudadano
+             * y del policía.
+             */
+            if (
+                !alerta.ubicacion ||
+                !alerta.ubicacion.latitud ||
+                !alerta.ubicacion.longitud ||
+                !alerta.policia ||
+                !alerta.policia.ubicacion ||
+                !alerta.policia.ubicacion.latitud ||
+                !alerta.policia.ubicacion.longitud
+            ) {
+
+                return;
+
+            }
+
+
+            const latitudCiudadano =
+                parseFloat(
+                    alerta.ubicacion.latitud
+                );
+
+
+            const longitudCiudadano =
+                parseFloat(
+                    alerta.ubicacion.longitud
+                );
+
+
+            const latitudPolicia =
+                parseFloat(
+                    alerta.policia
+                    .ubicacion
+                    .latitud
+                );
+
+
+            const longitudPolicia =
+                parseFloat(
+                    alerta.policia
+                    .ubicacion
+                    .longitud
+                );
+
+
+            try {
+
+                const url =
+                    'https://router.project-osrm.org/route/v1/driving/' +
+                    longitudPolicia + ',' +
+                    latitudPolicia + ';' +
+                    longitudCiudadano + ',' +
+                    latitudCiudadano +
+                    '?overview=full&geometries=geojson';
+
+
+                const respuesta =
+                    await fetch(
+                        url
+                    );
+
+
+                const datos =
+                    await respuesta.json();
+
+
+                if (
+                    !datos.routes ||
+                    datos.routes.length === 0
+                ) {
+
+                    return;
+
+                }
+
+
+                const ruta =
+                    datos.routes[0];
+
+
+                const coordenadas =
+                    ruta.geometry.coordinates.map(
+                        function(coordenada) {
+
+                            return [
+                                coordenada[1],
+                                coordenada[0]
+                            ];
+
+                        }
+                    );
+
+
+                rutaAlertaPolicia =
+                    L.polyline(
+                        coordenadas, {
+                            weight: 5
+                        }
+                    )
+                    .addTo(
+                        mapaMonitoreo
+                    );
+
+
+                // Mostrar completa la ruta seleccionada.
+                if (
+                    ajustarVistaRuta
+                ) {
+
+                    mapaMonitoreo.fitBounds(
+                        rutaAlertaPolicia.getBounds(), {
+                            padding: [
+                                40,
+                                40
+                            ]
+                        }
+                    );
+
+
+                    ajustarVistaRuta =
+                        false;
+
+                }
+
+
+            } catch (error) {
+
+                console.error(
+                    'No fue posible calcular la ruta en el centro:',
+                    error
+                );
+
+            }
 
         }
 
@@ -2899,10 +3328,18 @@
 
                     cargarAlertas();
 
+                    if (
+                        idAlertaSeleccionada !== null
+                    ) {
+                        cargarDetalle(
+                            idAlertaSeleccionada
+                        );
+                    }
+
                 }
 
             },
-            10000
+            5000
         );
 
 

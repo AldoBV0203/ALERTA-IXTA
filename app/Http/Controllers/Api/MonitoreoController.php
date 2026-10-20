@@ -134,6 +134,65 @@ class MonitoreoController extends Controller
             ->orderByDesc('id')
             ->first();
 
+        // Buscar al policía que aceptó la alerta.
+        $asignacion =
+            \App\Models\SeguimientoAlerta::where(
+                'id_alerta',
+                $alerta->id_alerta
+            )
+            ->where(
+                'accion',
+                'ACEPTO_ALERTA'
+            )
+            ->orderByDesc('id')
+            ->first();
+
+
+        $policiaAsignado =
+            null;
+
+
+        if ($asignacion) {
+
+            $policia =
+                Operador::where(
+                    'id_operador',
+                    $asignacion->id_operador
+                )
+                ->where(
+                    'rol',
+                    'POLICIA'
+                )
+                ->first();
+
+
+            if ($policia) {
+
+                $policiaAsignado = [
+
+                    'id_operador' =>
+                    $policia->id_operador,
+
+                    'nombre' =>
+                    $policia->nombre,
+
+                    'ubicacion' => [
+
+                        'latitud' =>
+                        $policia->latitud_actual,
+
+                        'longitud' =>
+                        $policia->longitud_actual,
+
+                        'actualizada_at' =>
+                        $policia->ubicacion_actualizada_at,
+
+                    ],
+
+                ];
+            }
+        }
+
         return response()->json([
             'alerta' => [
                 'id_alerta' => $alerta->id_alerta,
@@ -158,6 +217,8 @@ class MonitoreoController extends Controller
                     'precision_m' =>
                     $ubicacion?->precision_m,
                 ],
+                'policia' =>
+                $policiaAsignado,
             ],
         ]);
     }

@@ -260,6 +260,28 @@ class AlertaController extends Controller
             }
         }
 
+        // Buscar la ubicación más reciente del ciudadano.
+        $ultimaUbicacion =
+            UbicacionAlerta::where(
+                'id_alerta',
+                $alerta->id_alerta
+            )
+            ->orderByDesc('id')
+            ->first();
+
+
+        $latitudCiudadano =
+            $ultimaUbicacion
+            ? $ultimaUbicacion->latitud
+            : $alerta->latitud;
+
+
+        $longitudCiudadano =
+            $ultimaUbicacion
+            ? $ultimaUbicacion->longitud
+            : $alerta->longitud;
+
+
         return response()->json([
             'alerta' => [
                 'id_alerta' => $alerta->id_alerta,
@@ -269,8 +291,8 @@ class AlertaController extends Controller
                 'prioridad' => $alerta->prioridad,
 
                 'ubicacion' => [
-                    'latitud' => $alerta->latitud,
-                    'longitud' => $alerta->longitud,
+                    'latitud' => $latitudCiudadano,
+                    'longitud' => $longitudCiudadano,
                 ],
 
                 'policia' => $policia,

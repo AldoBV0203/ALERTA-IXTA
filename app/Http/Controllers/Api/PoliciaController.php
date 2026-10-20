@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Alerta;
 use App\Models\Operador;
 use App\Models\SeguimientoAlerta;
+use App\Models\UbicacionAlerta;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -86,12 +87,37 @@ class PoliciaController extends Controller
             )->first();
 
             if ($alerta) {
-                $distancia = $this->calcularDistanciaMetros(
-                    (float) $personal->latitud_actual,
-                    (float) $personal->longitud_actual,
-                    (float) $alerta->latitud,
-                    (float) $alerta->longitud
-                );
+                // Buscar la ubicación más reciente enviada por el ciudadano.
+                $ultimaUbicacion =
+                    UbicacionAlerta::where(
+                        'id_alerta',
+                        $alerta->id_alerta
+                    )
+                    ->orderByDesc('id')
+                    ->first();
+
+                //Si existe seguimiento de ubicación, usamos la posición más reciente.
+                //Si no existe, usamos la ubicación original con la que se creó la alerta.
+
+                $latitudCiudadano =
+                    $ultimaUbicacion
+                    ? (float) $ultimaUbicacion->latitud
+                    : (float) $alerta->latitud;
+
+
+                $longitudCiudadano =
+                    $ultimaUbicacion
+                    ? (float) $ultimaUbicacion->longitud
+                    : (float) $alerta->longitud;
+
+
+                $distancia =
+                    $this->calcularDistanciaMetros(
+                        (float) $personal->latitud_actual,
+                        (float) $personal->longitud_actual,
+                        $latitudCiudadano,
+                        $longitudCiudadano
+                    );
 
                 // Si el policía esta a 50 metros o menos,
                 // la alerta cambia automaticamente a EN_SITIO.
@@ -215,11 +241,33 @@ class PoliciaController extends Controller
             )
             ->first();
 
+            
         if (!$alerta) {
             return response()->json([
                 'servicio' => null,
             ]);
         }
+
+        // Obtener la posición más reciente del ciudadano durante la alerta.
+        $ultimaUbicacion =
+            UbicacionAlerta::where(
+                'id_alerta',
+                $alerta->id_alerta
+            )
+            ->orderByDesc('id')
+            ->first();
+
+
+        $latitudCiudadano =
+            $ultimaUbicacion
+            ? $ultimaUbicacion->latitud
+            : $alerta->latitud;
+
+
+        $longitudCiudadano =
+            $ultimaUbicacion
+            ? $ultimaUbicacion->longitud
+            : $alerta->longitud;
 
         return response()->json([
             'servicio' => [
@@ -243,10 +291,10 @@ class PoliciaController extends Controller
 
                 'ubicacion' => [
                     'latitud' =>
-                    $alerta->latitud,
+                    $latitudCiudadano,
 
                     'longitud' =>
-                    $alerta->longitud,
+                    $longitudCiudadano,
                 ],
             ],
         ]);
