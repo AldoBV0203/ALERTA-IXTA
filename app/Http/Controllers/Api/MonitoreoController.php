@@ -508,6 +508,144 @@ class MonitoreoController extends Controller
         ]);
     }
 
+    // Rechazar una oferta de alerta.
+
+    public function rechazar(
+        Request $request,
+        int $id
+    ) {
+
+        $personal =
+            $request->user();
+
+
+        /*
+     * Solo un policía activo
+     * puede rechazar una oferta.
+     */
+        if (
+            !$personal instanceof Operador ||
+            !$personal->activo ||
+            $personal->rol !== 'POLICIA'
+        ) {
+
+            return response()->json([
+                'message' =>
+                'No tienes permiso para realizar esta acción.',
+            ], 403);
+        }
+
+
+        /*
+     * Buscar la alerta.
+     */
+        $alerta =
+            Alerta::where(
+                'id_alerta',
+                $id
+            )
+            ->first();
+
+
+        if (!$alerta) {
+
+            return response()->json([
+                'message' =>
+                'La alerta no existe.',
+            ], 404);
+        }
+
+
+        /*
+     * Solo se puede rechazar
+     * mientras siga siendo NUEVA.
+     */
+        if (
+            $alerta->estado !==
+            'NUEVA'
+        ) {
+
+            return response()->json([
+                'message' =>
+                'La alerta ya fue aceptada o cambió de estado.',
+            ], 409);
+        }
+
+
+        /*
+     * Verificar que la oferta actual
+     * realmente pertenece a este policía.
+     */
+        $policiaEnOferta =
+            $this
+            ->obtenerPoliciaEnOferta(
+                $alerta
+            );
+
+
+        if (
+            !$policiaEnOferta ||
+            (int)
+            $policiaEnOferta->id_operador
+            !==
+            (int)
+            $personal->id_operador
+        ) {
+
+            return response()->json([
+                'message' =>
+                'Esta alerta ya no está asignada a tu oferta.',
+            ], 403);
+        }
+
+
+        /*
+     * Registrar el rechazo.
+     */
+        SeguimientoAlerta::create([
+
+            'id_alerta' =>
+            $alerta->id_alerta,
+
+            'id_operador' =>
+            $personal->id_operador,
+
+            'accion' =>
+            'OFERTA_RECHAZADA',
+
+            'observaciones' =>
+            'El policía rechazó la oferta de atención.',
+
+        ]);
+
+
+        /*
+     * Registrar auditoría.
+     */
+        $this->registrarAuditoria(
+            $request,
+            $personal,
+            'RECHAZAR_OFERTA_ALERTA',
+            $alerta->id_alerta
+        );
+
+
+        /*
+     * Buscar inmediatamente al
+     * siguiente policía disponible.
+     */
+        $this
+            ->obtenerPoliciaEnOferta(
+                $alerta
+            );
+
+
+        return response()->json([
+            'message' =>
+            'Oferta rechazada correctamente.',
+        ]);
+    }
+
     // Registrar seguimiento de una alerta.
 
     public function seguimiento(Request $request, int $id)
@@ -916,7 +1054,7 @@ class MonitoreoController extends Controller
 
 
         $limiteUbicacion =
-            now()->subMinutes(2);
+            now()->subSeconds(30);
 
 
         $consultaPolicias =
@@ -1081,52 +1219,7 @@ class MonitoreoController extends Controller
 
                 if ($ultimaOferta) {
 
-                    $vence =
-                        \Carbon\Carbon::parse(
-                            $ultimaOferta->fecha_hora
-                        )
-                        ->addSeconds(20);
-
-
-                    $policiaOferta =
-                        Operador::where(
-                            'id_operador',
-                            $ultimaOferta->id_operador
-                        )
-                        ->where(
-                            'rol',
-                            'POLICIA'
-                        )
-                        ->where(
-                            'activo',
-                            true
-                        )
-                        ->where(
-                            'disponible',
-                            true
-                        )
-                        ->first();
-
-
-                    /*
-                 * Si todavía no pasaron
-                 * los 20 segundos, la oferta
-                 * sigue perteneciendo al
-                 * mismo policía.
-                 */
-                    if (
-                        now()->lt($vence) &&
-                        $policiaOferta
-                    ) {
-
-                        return $policiaOferta;
-                    }
-
-
-                    /*
-                 * La oferta venció.
-                 */
-                    $vencimientoRegistrado =
+                    $ofertaRechazada =
                         SeguimientoAlerta::where(
                             'id_alerta',
                             $alertaBloqueada->id_alerta
@@ -1137,7 +1230,7 @@ class MonitoreoController extends Controller
                         )
                         ->where(
                             'accion',
-                            'OFERTA_VENCIDA'
+                            'OFERTA_RECHAZADA'
                         )
                         ->where(
                             'id',
@@ -1147,25 +1240,96 @@ class MonitoreoController extends Controller
                         ->exists();
 
 
-                    if (
-                        !$vencimientoRegistrado
-                    ) {
+                    /*
+     * Si el policía NO rechazó,
+     * revisar si todavía siguen
+     * vigentes sus 20 segundos.
+     */
+                    if (!$ofertaRechazada) {
 
-                        SeguimientoAlerta::create([
+                        $vence =
+                            \Carbon\Carbon::parse(
+                                $ultimaOferta->fecha_hora
+                            )
+                            ->addSeconds(40);
 
-                            'id_alerta' =>
-                            $alertaBloqueada->id_alerta,
 
-                            'id_operador' =>
-                            $ultimaOferta->id_operador,
+                        $policiaOferta =
+                            Operador::where(
+                                'id_operador',
+                                $ultimaOferta->id_operador
+                            )
+                            ->where(
+                                'rol',
+                                'POLICIA'
+                            )
+                            ->where(
+                                'activo',
+                                true
+                            )
+                            ->where(
+                                'disponible',
+                                true
+                            )
+                            ->first();
 
-                            'accion' =>
-                            'OFERTA_VENCIDA',
 
-                            'observaciones' =>
-                            'El policía no aceptó la alerta dentro de los 20 segundos.',
+                        /*
+         * La oferta todavía está vigente.
+         */
+                        if (
+                            now()->lt($vence) &&
+                            $policiaOferta
+                        ) {
 
-                        ]);
+                            return $policiaOferta;
+                        }
+
+
+                        /*
+         * La oferta terminó por tiempo.
+         */
+                        $vencimientoRegistrado =
+                            SeguimientoAlerta::where(
+                                'id_alerta',
+                                $alertaBloqueada->id_alerta
+                            )
+                            ->where(
+                                'id_operador',
+                                $ultimaOferta->id_operador
+                            )
+                            ->where(
+                                'accion',
+                                'OFERTA_VENCIDA'
+                            )
+                            ->where(
+                                'id',
+                                '>',
+                                $ultimaOferta->id
+                            )
+                            ->exists();
+
+
+                        if (
+                            !$vencimientoRegistrado
+                        ) {
+
+                            SeguimientoAlerta::create([
+
+                                'id_alerta' =>
+                                $alertaBloqueada->id_alerta,
+
+                                'id_operador' =>
+                                $ultimaOferta->id_operador,
+
+                                'accion' =>
+                                'OFERTA_VENCIDA',
+
+                                'observaciones' =>
+                                'El policía no aceptó la alerta dentro de los 40 segundos.',
+
+                            ]);
+                        }
                     }
                 }
 
@@ -1230,7 +1394,7 @@ class MonitoreoController extends Controller
                     'OFERTA_ALERTA',
 
                     'observaciones' =>
-                    'Alerta ofrecida al policía durante 20 segundos.',
+                    'Alerta ofrecida al policía durante 40 segundos.',
 
                 ]);
 

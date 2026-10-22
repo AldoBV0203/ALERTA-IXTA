@@ -103,6 +103,14 @@
             }
         }
 
+        .btn-rechazar {
+            width: 100%;
+            margin-top: 8px;
+            background: #9F2241;
+            color: white;
+            font-weight: bold;
+        }
+
         .btn-finalizar {
             width: 100%;
             margin-top: 15px;
@@ -305,6 +313,16 @@
                         onclick="aceptarAlerta()">
 
                         Aceptar alerta
+
+                    </button>
+
+                    <button
+                        type="button"
+                        id="btnRechazar"
+                        class="boton btn-rechazar"
+                        onclick="rechazarAlerta()">
+
+                        Rechazar alerta
 
                     </button>
 
@@ -952,6 +970,11 @@
                     'btnAceptar'
                 );
 
+            const btnRechazar =
+                document.getElementById(
+                    'btnRechazar'
+                );
+
 
             detallePanel
                 .classList
@@ -1065,10 +1088,23 @@
                 btnAceptar.textContent =
                     'Aceptar alerta';
 
+                btnRechazar.style.display =
+                    'block';
+
+                btnRechazar.disabled =
+                    false;
+
+                btnRechazar.textContent =
+                    'Rechazar alerta';
+
             } else {
 
                 btnAceptar.style.display =
                     'none';
+
+                btnRechazar.style.display =
+                    'none';
+
 
             }
 
@@ -1132,6 +1168,16 @@
         async function aceptarAlerta() {
 
             if (!idAlertaSeleccionada) {
+                return;
+            }
+
+            const confirmar =
+                window.confirm(
+                    '¿Confirmas que deseas aceptar esta alerta?'
+                );
+
+
+            if (!confirmar) {
                 return;
             }
 
@@ -1199,6 +1245,13 @@
                 .style.display =
                 'none';
 
+            document
+                .getElementById(
+                    'btnRechazar'
+                )
+                .style.display =
+                'none';
+
             idServicioActual =
                 idAlertaSeleccionada;
 
@@ -1211,6 +1264,180 @@
             await cargarServicioActual();
 
             await cargarAlertas();
+
+        }
+
+        async function rechazarAlerta() {
+
+            if (!idAlertaSeleccionada) {
+                return;
+            }
+
+            const confirmar =
+                window.confirm(
+                    'Rechazar alerta'
+                );
+
+
+            if (!confirmar) {
+                return;
+            }
+
+
+            const boton =
+                document.getElementById(
+                    'btnRechazar'
+                );
+
+
+            const mensaje =
+                document.getElementById(
+                    'mensajePolicia'
+                );
+
+
+            boton.disabled =
+                true;
+
+
+            boton.textContent =
+                'Rechazando...';
+
+
+            try {
+
+                const respuesta =
+                    await fetch(
+                        API +
+                        '/monitoreo/alertas/' +
+                        idAlertaSeleccionada +
+                        '/rechazar', {
+
+                            method: 'POST',
+
+                            headers: {
+
+                                'Authorization': 'Bearer ' +
+                                    tokenPolicia,
+
+                                'Accept': 'application/json'
+
+                            }
+
+                        }
+                    );
+
+
+                const datos =
+                    await respuesta.json();
+
+
+                if (!respuesta.ok) {
+
+                    mensaje.style.color =
+                        '#9F2241';
+
+
+                    mensaje.textContent =
+                        datos.message ??
+                        'No fue posible rechazar la alerta.';
+
+
+                    boton.disabled =
+                        false;
+
+
+                    boton.textContent =
+                        'Rechazar alerta';
+
+
+                    return;
+                }
+
+
+                mensaje.style.color =
+                    '#235B4E';
+
+
+                mensaje.textContent =
+                    'Oferta rechazada. Se buscará otro policía disponible.';
+
+
+                /*
+                 * Limpiar la alerta que
+                 * acaba de rechazar.
+                 */
+                if (marcadorAlerta) {
+
+                    mapaPolicia.removeLayer(
+                        marcadorAlerta
+                    );
+
+                    marcadorAlerta =
+                        null;
+
+                }
+
+
+                if (rutaPolicia) {
+
+                    mapaPolicia.removeLayer(
+                        rutaPolicia
+                    );
+
+                    rutaPolicia =
+                        null;
+
+                }
+
+
+                latitudDestino =
+                    null;
+
+
+                longitudDestino =
+                    null;
+
+
+                idAlertaSeleccionada =
+                    null;
+
+
+                document
+                    .getElementById(
+                        'detalleAlerta'
+                    )
+                    .classList
+                    .add('oculto');
+
+
+                await cargarAlertas();
+
+
+            } catch (error) {
+
+                console.error(
+                    'Error rechazando alerta:',
+                    error
+                );
+
+
+                mensaje.style.color =
+                    '#9F2241';
+
+
+                mensaje.textContent =
+                    'No fue posible conectar con el servidor.';
+
+
+                boton.disabled =
+                    false;
+
+
+                boton.textContent =
+                    'Rechazar alerta';
+
+            }
 
         }
 

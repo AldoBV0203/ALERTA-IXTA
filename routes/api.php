@@ -69,6 +69,14 @@ Route::middleware('auth:sanctum')->group(function () {
         'aceptar'
     ]);
 
+    Route::post(
+        '/monitoreo/alertas/{id}/rechazar',
+        [
+            MonitoreoController::class,
+            'rechazar'
+        ]
+    );
+
     Route::post('/monitoreo/alertas/{id}/seguimiento', [
         MonitoreoController::class,
         'seguimiento'
