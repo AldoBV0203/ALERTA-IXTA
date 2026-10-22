@@ -45,6 +45,16 @@
             margin-top: 10px;
         }
 
+        .boton-cancelar-alerta {
+            background: #9F2241;
+            color: white;
+            margin-top: 12px;
+        }
+
+        .boton-cancelar-alerta:hover {
+            background: #691C32;
+        }
+
         .mensaje {
             margin-top: 12px;
             text-align: center;
@@ -72,6 +82,16 @@
             justify-content: center;
             font-size: 21px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+        }
+
+        .sos {
+            touch-action: none;
+            user-select: none;
+        }
+
+        .sos-presionando {
+            transform: scale(0.94);
+            opacity: 0.85;
         }
 
         @keyframes pulsoEmergencia {
@@ -157,8 +177,10 @@
                     SOS
                 </button>
 
-                <div class="instruccion">
-                    Presiona para solicitar ayuda
+                <div
+                    class="instruccion"
+                    id="instruccionSOS">
+                    Mantén presionado SOS durante 3 segundos
                 </div>
 
             </div>
@@ -221,6 +243,15 @@
                     </span>
                 </p>
 
+                <button
+                    type="button"
+                    id="btnCancelarAlerta"
+                    class="boton boton-cancelar-alerta"
+                    onclick="cancelarAlerta()"
+                    style="display: none;">
+                    Cancelar alerta
+                </button>
+
             </div>
 
 
@@ -279,6 +310,12 @@
         let intervaloUbicacionCiudadano = null;
 
         let ubicacionManualCiudadano = false;
+
+        let temporizadorSOS = null;
+
+        let sosPresionado = false;
+
+        let sosProcesando = false;
 
 
         const iconoCiudadano = L.divIcon({
@@ -868,13 +905,156 @@
 
 
         // Crear alerta.
-        document
-            .getElementById('btnSOS')
-            .addEventListener(
-                'click',
-                crearAlerta
+
+        const btnSOS =
+            document.getElementById(
+                'btnSOS'
             );
 
+
+        const instruccionSOS =
+            document.getElementById(
+                'instruccionSOS'
+            );
+
+
+        function iniciarPresionSOS(evento) {
+
+            evento.preventDefault();
+
+
+            if (
+                sosProcesando ||
+                temporizadorSOS !== null
+            ) {
+                return;
+            }
+
+
+            sosPresionado =
+                true;
+
+
+            btnSOS.classList.add(
+                'sos-presionando'
+            );
+
+
+            instruccionSOS.textContent =
+                'Sigue presionando...';
+
+
+            temporizadorSOS =
+                setTimeout(
+                    async function() {
+
+                            temporizadorSOS =
+                                null;
+
+
+                            if (
+                                !sosPresionado ||
+                                sosProcesando
+                            ) {
+                                return;
+                            }
+
+
+                            sosPresionado =
+                                false;
+
+                            sosProcesando =
+                                true;
+
+
+                            btnSOS.classList.remove(
+                                'sos-presionando'
+                            );
+
+
+                            instruccionSOS.textContent =
+                                'Enviando alerta...';
+
+
+                            await crearAlerta();
+
+
+                            sosProcesando =
+                                false;
+
+
+                            instruccionSOS.textContent =
+                                'Mantén presionado SOS durante 3 segundos';
+
+                        },
+                        3000
+                );
+        }
+
+
+        function cancelarPresionSOS() {
+
+            /*
+            Si ya pasaron los 3 segundos y estamos enviando la alerta, ya no cancelamos la acción.
+             */
+            if (sosProcesando) {
+                return;
+            }
+
+
+            sosPresionado =
+                false;
+
+
+            if (
+                temporizadorSOS !== null
+            ) {
+
+                clearTimeout(
+                    temporizadorSOS
+                );
+
+                temporizadorSOS =
+                    null;
+            }
+
+
+            btnSOS.classList.remove(
+                'sos-presionando'
+            );
+
+
+            instruccionSOS.textContent =
+                'Mantén presionado SOS durante 3 segundos';
+        }
+
+
+        /*
+         * Pointer Events funcionan tanto
+         * con mouse como con pantalla táctil.
+         */
+        btnSOS.addEventListener(
+            'pointerdown',
+            iniciarPresionSOS
+        );
+
+
+        btnSOS.addEventListener(
+            'pointerup',
+            cancelarPresionSOS
+        );
+
+
+        btnSOS.addEventListener(
+            'pointerleave',
+            cancelarPresionSOS
+        );
+
+
+        btnSOS.addEventListener(
+            'pointercancel',
+            cancelarPresionSOS
+        );
 
         async function crearAlerta() {
 
@@ -1005,6 +1185,165 @@
 
         }
 
+        async function cancelarAlerta() {
+
+            if (!idAlertaActual) {
+                return;
+            }
+
+
+            const confirmar =
+                window.confirm(
+                    '¿Confirmas que deseas cancelar esta alerta?'
+                );
+
+
+            if (!confirmar) {
+                return;
+            }
+
+
+            const mensaje =
+                document.getElementById(
+                    'mensajeAlerta'
+                );
+
+
+            const boton =
+                document.getElementById(
+                    'btnCancelarAlerta'
+                );
+
+
+            boton.disabled = true;
+
+            boton.textContent =
+                'Cancelando...';
+
+
+            try {
+
+                const respuesta =
+                    await fetch(
+                        API +
+                        '/mis-alertas/' +
+                        idAlertaActual +
+                        '/cancelar', {
+
+                            method: 'POST',
+
+                            headers: {
+
+                                'Authorization': 'Bearer ' + token,
+
+                                'Accept': 'application/json'
+
+                            }
+
+                        }
+                    );
+
+
+                const datos =
+                    await respuesta.json();
+
+
+                if (!respuesta.ok) {
+
+                    mensaje.style.color =
+                        '#9F2241';
+
+                    mensaje.textContent =
+                        datos.message ??
+                        'No fue posible cancelar la alerta.';
+
+
+                    boton.disabled =
+                        false;
+
+                    boton.textContent =
+                        'Cancelar alerta';
+
+                    return;
+                }
+
+
+                mensaje.style.color =
+                    '#235B4E';
+
+                mensaje.textContent =
+                    'Alerta cancelada correctamente.';
+
+
+                document
+                    .getElementById(
+                        'estado'
+                    )
+                    .textContent =
+                    'CANCELADA';
+
+
+                boton.style.display =
+                    'none';
+
+
+                /*
+                 * Ya no necesitamos seguir
+                 * consultando ni enviando ubicación.
+                 */
+                if (intervaloEstado) {
+
+                    clearInterval(
+                        intervaloEstado
+                    );
+
+                    intervaloEstado =
+                        null;
+                }
+
+
+                detenerSeguimientoUbicacionCiudadano();
+
+
+                /*
+                 * Evitar que se sigan enviando
+                 * coordenadas a la alerta cancelada.
+                 */
+                idAlertaActual =
+                    null;
+
+
+                /*
+                 * Si había un policía o ruta
+                 * mostrados, eliminarlos.
+                 */
+                actualizarPoliciaEnMapa({
+                    policia: null
+                });
+
+
+            } catch (error) {
+
+                console.error(
+                    'Error cancelando alerta:',
+                    error
+                );
+
+
+                mensaje.style.color =
+                    '#9F2241';
+
+                mensaje.textContent =
+                    'No fue posible conectar con el servidor.';
+
+
+                boton.disabled =
+                    false;
+
+                boton.textContent =
+                    'Cancelar alerta';
+            }
+        }
 
         // Consultar historial del ciudadano.
         async function cargarMisAlertas() {
@@ -1156,6 +1495,34 @@
                 .textContent =
                 alerta.estado;
 
+            const btnCancelarAlerta =
+                document.getElementById(
+                    'btnCancelarAlerta'
+                );
+
+
+            if (
+                alerta.estado ===
+                'NUEVA'
+            ) {
+
+                btnCancelarAlerta
+                    .style.display =
+                    'block';
+
+                btnCancelarAlerta.disabled =
+                    false;
+
+                btnCancelarAlerta.textContent =
+                    'Cancelar alerta';
+
+            } else {
+
+                btnCancelarAlerta
+                    .style.display =
+                    'none';
+            }
+
 
             if (alerta.policia) {
 
@@ -1204,8 +1571,7 @@
 
 
             if (
-                alerta.estado ===
-                'CERRADA'
+                alerta.estado === 'CERRADA' || alerta.estado === 'CANCELADA'
             ) {
 
                 if (intervaloEstado) {

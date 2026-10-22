@@ -39,22 +39,22 @@ class PersonalAuthController extends Controller
             ],
         ], [
             'nombre.required' =>
-                'El nombre es obligatorio.',
+            'El nombre es obligatorio.',
 
             'usuario.required' =>
-                'El usuario es obligatorio.',
+            'El usuario es obligatorio.',
 
             'usuario.unique' =>
-                'Ese nombre de usuario ya está registrado.',
+            'Ese nombre de usuario ya está registrado.',
 
             'usuario.regex' =>
-                'El usuario solo puede contener letras, números, punto, guion y guion bajo.',
+            'El usuario solo puede contener letras, números, punto, guion y guion bajo.',
 
             'password.required' =>
-                'La contraseña es obligatoria.',
+            'La contraseña es obligatoria.',
 
             'password.confirmed' =>
-                'Las contraseñas no coinciden.',
+            'Las contraseñas no coinciden.',
         ]);
 
 
@@ -68,43 +68,43 @@ class PersonalAuthController extends Controller
             'password_hash' => Hash::make(
                 $datos['password']
             ),
-            
+
             // No dejamos que el usuario se asigne su propio rol.
-             
+
             'rol' => 'PENDIENTE',
-            
-             //No puede acceder al sistema hasta ser autorizado.
-             
+
+            //No puede acceder al sistema hasta ser autorizado.
+
             'activo' => false,
         ]);
 
 
         return response()->json([
             'message' =>
-                'Registro realizado. La cuenta está pendiente de autorización.',
+            'Registro realizado. La cuenta está pendiente de autorización.',
 
             'personal' => [
                 'id_operador' =>
-                    $operador->id_operador,
+                $operador->id_operador,
 
                 'nombre' =>
-                    $operador->nombre,
+                $operador->nombre,
 
                 'usuario' =>
-                    $operador->usuario,
+                $operador->usuario,
 
                 'rol' =>
-                    $operador->rol,
+                $operador->rol,
 
                 'activo' =>
-                    $operador->activo,
+                $operador->activo,
             ],
         ], 201);
     }
 
 
     // Inicio de sesión del personal municipal.
-    
+
     public function login(Request $request)
     {
         $datos = $request->validate([
@@ -132,7 +132,7 @@ class PersonalAuthController extends Controller
 
 
         // Mensaje genérico para no revelar si un usuario existe o no.
-       
+
         if (
             !$operador ||
             !Hash::check(
@@ -142,26 +142,34 @@ class PersonalAuthController extends Controller
         ) {
             return response()->json([
                 'message' =>
-                    'Credenciales incorrectas.',
+                'Credenciales incorrectas.',
             ], 401);
         }
 
 
         // Una cuenta pendiente NO puede entrar.
-        
+
         if (
             !$operador->activo ||
             $operador->rol === 'PENDIENTE'
         ) {
             return response()->json([
                 'message' =>
-                    'La cuenta está pendiente de autorización.',
+                'La cuenta está pendiente de autorización.',
             ], 403);
         }
-        
-        
+
+
         // Generar token solamente para personal autorizado.
-        
+        // Un policia solo puede inciar sesion una vez
+        if ($operador->rol === 'POLICIA') {
+
+            $operador
+                ->tokens()
+                ->delete();
+        }
+
+
         $token = $operador
             ->createToken(
                 'alerta-ixta-personal',
@@ -175,23 +183,23 @@ class PersonalAuthController extends Controller
 
         return response()->json([
             'message' =>
-                'Inicio de sesión correcto.',
+            'Inicio de sesión correcto.',
 
             'token' =>
-                $token,
+            $token,
 
             'personal' => [
                 'id_operador' =>
-                    $operador->id_operador,
+                $operador->id_operador,
 
                 'nombre' =>
-                    $operador->nombre,
+                $operador->nombre,
 
                 'usuario' =>
-                    $operador->usuario,
+                $operador->usuario,
 
                 'rol' =>
-                    $operador->rol,
+                $operador->rol,
             ],
         ]);
     }

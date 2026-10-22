@@ -1054,7 +1054,7 @@ class MonitoreoController extends Controller
 
 
         $limiteUbicacion =
-            now()->subSeconds(30);
+            now()->subSeconds(30); //si el policia deja de mandar su ubicacion durante 30s ya no recibe alertas
 
 
         $consultaPolicias =
@@ -1240,11 +1240,7 @@ class MonitoreoController extends Controller
                         ->exists();
 
 
-                    /*
-     * Si el policía NO rechazó,
-     * revisar si todavía siguen
-     * vigentes sus 20 segundos.
-     */
+                    // Si el policía NO rechazó, revisar si todavía siguen vigentes sus 20 segundos.
                     if (!$ofertaRechazada) {
 
                         $vence =
@@ -1334,11 +1330,23 @@ class MonitoreoController extends Controller
                 }
 
 
-                /*
-             * Obtener policías a los que ya
-             * se les ofreció esta alerta.
-             */
-                $policiasIntentados =
+                // Buscar si anteriormente se inició una nueva ronda de ofertas.
+                $ultimoReinicio =
+                    SeguimientoAlerta::where(
+                        'id_alerta',
+                        $alertaBloqueada->id_alerta
+                    )
+                    ->where(
+                        'accion',
+                        'REINICIO_RONDA'
+                    )
+                    ->orderByDesc('id')
+                    ->first();
+
+
+                // Obtener únicamente los policías intentados durante la ronda actual.
+
+                $consultaIntentados =
                     SeguimientoAlerta::where(
                         'id_alerta',
                         $alertaBloqueada->id_alerta
@@ -1346,7 +1354,22 @@ class MonitoreoController extends Controller
                     ->where(
                         'accion',
                         'OFERTA_ALERTA'
-                    )
+                    );
+
+
+                if ($ultimoReinicio) {
+
+                    $consultaIntentados
+                        ->where(
+                            'id',
+                            '>',
+                            $ultimoReinicio->id
+                        );
+                }
+
+
+                $policiasIntentados =
+                    $consultaIntentados
                     ->pluck(
                         'id_operador'
                     )
@@ -1361,10 +1384,7 @@ class MonitoreoController extends Controller
                     ->all();
 
 
-                /*
-             * Buscar al siguiente más cercano,
-             * excluyendo a los anteriores.
-             */
+                // Buscar al siguiente más cercano, excluyendo a los anteriores.
                 $siguientePolicia =
                     $this
                     ->obtenerPoliciaMasCercano(
@@ -1375,13 +1395,101 @@ class MonitoreoController extends Controller
 
                 if (!$siguientePolicia) {
 
-                    return null;
+                    // Buscar la última vez que una oferta terminó por rechazo o vencimiento.
+                    $ultimaFinalizacion =
+                        SeguimientoAlerta::where(
+                            'id_alerta',
+                            $alertaBloqueada->id_alerta
+                        )
+                        ->whereIn(
+                            'accion',
+                            [
+                                'OFERTA_VENCIDA',
+                                'OFERTA_RECHAZADA'
+                            ]
+                        )
+                        ->orderByDesc('id')
+                        ->first();
+
+
+                    //  Si nunca hubo una oferta, simplemente no hay policías disponibles en este momento.
+                    if (!$ultimaFinalizacion) {
+
+                        return null;
+                    }
+
+
+                    /* Si ya reiniciamos la ronda después
+                    de la última finalización pero todavía no apareció ningún policía disponible, no crear otro reinicio. */
+                    if (
+                        $ultimoReinicio &&
+                        $ultimoReinicio->id >
+                        $ultimaFinalizacion->id
+                    ) {
+
+                        return null;
+                    }
+
+
+                    // Esperar 20 segundos antes de iniciar nuevamente una ronda completa.
+                    $momentoReinicio =
+                        \Carbon\Carbon::parse(
+                            $ultimaFinalizacion->fecha_hora
+                        )
+                        ->addSeconds(20);
+
+
+                    if (
+                        now()->lt(
+                            $momentoReinicio
+                        )
+                    ) {
+
+                        return null;
+                    }
+
+
+                    /* Registrar el inicio de una nueva ronda.
+                    Usamos el último policía de la oferta anterior para conservar la relación existente en seguimiento_alerta. */
+                    SeguimientoAlerta::create([
+
+                        'id_alerta' =>
+                        $alertaBloqueada->id_alerta,
+
+                        'id_operador' =>
+                        $ultimaOferta->id_operador,
+
+                        'accion' =>
+                        'REINICIO_RONDA',
+
+                        'observaciones' =>
+                        'Todos los policías de la ronda anterior fueron descartados. Se inicia una nueva ronda de búsqueda.',
+
+                    ]);
+
+
+                    // En la nueva ronda ya se pueden considerar nuevamente todos los policías disponibles.
+                    $policiasIntentados =
+                        [];
+
+
+                    $siguientePolicia =
+                        $this
+                        ->obtenerPoliciaMasCercano(
+                            $alertaBloqueada,
+                            $policiasIntentados
+                        );
+
+
+                    // Puede ocurrir que después de los 20 segundos ningún policía siga conectado o disponible.
+                    if (!$siguientePolicia) {
+
+                        return null;
+                    }
                 }
 
 
-                /*
-             * Registrar la nueva oferta.
-             */
+                // Registrar la nueva oferta.
                 SeguimientoAlerta::create([
 
                     'id_alerta' =>

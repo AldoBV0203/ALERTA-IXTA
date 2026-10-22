@@ -878,6 +878,116 @@
                         }
                     );
 
+                /*
+                  Si el policía tenía una alerta seleccionada pero ya no aparece entre sus ofertas,
+                  cerrar automáticamente el detalle.
+                  Puede ocurrir porque:
+                  - el ciudadano la canceló,
+                  - venció la oferta,
+                  - fue enviada a otro policía,
+                  - o cambió de estado.
+                 */
+                if (
+                    idAlertaSeleccionada !== null &&
+                    idServicioActual === null
+                ) {
+
+                    const sigueDisponible =
+                        disponibles.some(
+                            function(alerta) {
+
+                                return (
+                                    Number(
+                                        alerta.id_alerta
+                                    ) ===
+                                    Number(
+                                        idAlertaSeleccionada
+                                    )
+                                );
+                            }
+                        );
+
+
+                    if (!sigueDisponible) {
+
+                        idAlertaSeleccionada =
+                            null;
+
+
+                        modoMapaPolicia =
+                            'POLICIA';
+
+
+                        document
+                            .getElementById(
+                                'detalleAlerta'
+                            )
+                            .classList
+                            .add('oculto');
+
+
+                        document
+                            .getElementById(
+                                'btnAceptar'
+                            )
+                            .style.display =
+                            'none';
+
+
+                        document
+                            .getElementById(
+                                'btnRechazar'
+                            )
+                            .style.display =
+                            'none';
+
+
+                        /*
+                         * Quitar del mapa al ciudadano
+                         * de la oferta que ya terminó.
+                         */
+                        if (marcadorAlerta) {
+
+                            mapaPolicia.removeLayer(
+                                marcadorAlerta
+                            );
+
+                            marcadorAlerta =
+                                null;
+                        }
+
+
+                        /*
+                         * Quitar una posible ruta
+                         * de revisión.
+                         */
+                        if (rutaPolicia) {
+
+                            mapaPolicia.removeLayer(
+                                rutaPolicia
+                            );
+
+                            rutaPolicia =
+                                null;
+                        }
+
+
+                        latitudDestino =
+                            null;
+
+                        longitudDestino =
+                            null;
+
+
+                        document
+                            .getElementById(
+                                'mensajePolicia'
+                            )
+                            .textContent =
+                            'La alerta seleccionada ya no está disponible para atención.';
+                    }
+                }
+
 
                 contenedor.innerHTML = '';
 
@@ -2303,7 +2413,7 @@
                 }
 
             },
-            10000
+            5000
         );
     </script>
 

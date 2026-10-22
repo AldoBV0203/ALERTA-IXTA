@@ -107,6 +107,14 @@ Route::middleware('auth:sanctum')->group(function () {
         [AlertaController::class, 'actualizarUbicacion']
     );
 
+    Route::post(
+        '/mis-alertas/{id}/cancelar',
+        [
+            AlertaController::class,
+            'cancelar'
+        ]
+    );
+
     Route::get(
         '/policia/servicio-actual',
         [PoliciaController::class, 'servicioActual']

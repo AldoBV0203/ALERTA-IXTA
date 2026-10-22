@@ -300,6 +300,173 @@ class AlertaController extends Controller
         ]);
     }
 
+    // Cancelar una alerta creada por el ciudadano.
+    public function cancelar(
+        Request $request,
+        int $id
+    ) {
+
+        $usuario =
+            $request->user();
+
+
+        if (!$usuario) {
+
+            return response()->json([
+                'message' =>
+                'Debes iniciar sesión.',
+            ], 401);
+        }
+
+
+        $resultado =
+            \Illuminate\Support\Facades\DB::transaction(
+                function () use (
+                    $id,
+                    $usuario
+                ) {
+
+                    /*
+                 * Bloquear la alerta mientras
+                 * se procesa la cancelación.
+                 */
+                    $alerta =
+                        Alerta::where(
+                            'id_alerta',
+                            $id
+                        )
+                        ->lockForUpdate()
+                        ->first();
+
+
+                    if (!$alerta) {
+
+                        return 'NO_EXISTE';
+                    }
+
+
+                    /*
+                 * Verificar que la alerta
+                 * pertenezca al ciudadano
+                 * autenticado.
+                 */
+                    if (
+                        (int) $alerta->id_usuario !==
+                        (int) $usuario->getKey()
+                    ) {
+
+                        return 'NO_PERTENECE';
+                    }
+
+
+                    /*
+                 * Por ahora solamente se puede
+                 * cancelar una alerta NUEVA.
+                 */
+                    if (
+                        $alerta->estado !==
+                        'NUEVA'
+                    ) {
+
+                        return 'NO_CANCELABLE';
+                    }
+
+
+                    /*
+                 * Cambiar el estado.
+                 */
+                    $alerta->estado =
+                        'CANCELADA';
+
+                    $alerta->save();
+
+
+                    /*
+                 * Registrar la cancelación
+                 * en la bitácora.
+                 *
+                 * id_operador queda NULL porque
+                 * la acción la realizó el ciudadano.
+                 */
+                    \App\Models\SeguimientoAlerta::create([
+
+                        'id_alerta' =>
+                        $alerta->id_alerta,
+
+                        'id_operador' =>
+                        null,
+
+                        'accion' =>
+                        'CANCELACION_CIUDADANO',
+
+                        'observaciones' =>
+                        'El ciudadano canceló la alerta antes de que fuera aceptada.',
+
+                    ]);
+
+
+                    return $alerta;
+                }
+            );
+
+
+        if (
+            $resultado ===
+            'NO_EXISTE'
+        ) {
+
+            return response()->json([
+                'message' =>
+                'La alerta no existe.',
+            ], 404);
+        }
+
+
+        if (
+            $resultado ===
+            'NO_PERTENECE'
+        ) {
+
+            return response()->json([
+                'message' =>
+                'No puedes cancelar una alerta que no te pertenece.',
+            ], 403);
+        }
+
+
+        if (
+            $resultado ===
+            'NO_CANCELABLE'
+        ) {
+
+            return response()->json([
+                'message' =>
+                'La alerta ya fue aceptada y no puede cancelarse desde la aplicación.',
+            ], 409);
+        }
+
+
+        return response()->json([
+
+            'message' =>
+            'Alerta cancelada correctamente.',
+
+            'alerta' => [
+
+                'id_alerta' =>
+                $resultado->id_alerta,
+
+                'folio' =>
+                $resultado->folio,
+
+                'estado' =>
+                $resultado->estado,
+
+            ],
+
+        ]);
+    }
+
     public function actualizarUbicacion(
         Request $request,
         int $id
