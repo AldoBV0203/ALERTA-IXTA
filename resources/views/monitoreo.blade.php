@@ -1543,6 +1543,8 @@
         let rutaAlertaPolicia =
             null;
 
+        let solicitudRutaMonitoreo = 0;
+
         let idAlertaSeleccionada =
             null;
 
@@ -2549,11 +2551,15 @@
 
 
                             ubicacionReciente =
-                                diferencia <=
-                                120000;
+                                diferencia >= -5000 &&
+                                diferencia <= 30000;
 
                         }
 
+                        // No mostrar policías que llevan más de 30 segundos sin actualizar ubicación.
+                        if (!ubicacionReciente) {
+                            return;
+                        }
 
                         let claseEstado =
                             'policia-desactualizado';
@@ -2732,6 +2738,13 @@
 
             const datos =
                 await respuesta.json();
+
+            // Ignorar detalles de alertas que ya no están seleccionadas.
+            if (
+                Number(idAlerta) !== Number(idAlertaSeleccionada)
+            ) {
+                return;
+            }
 
 
             if (!respuesta.ok) {
@@ -2950,13 +2963,14 @@
                 Estado:
                 ${alerta.estado}
                 `
-                );                
+                );
 
         }
 
         async function mostrarRutaAlertaPolicia(
             alerta
         ) {
+            const solicitudActual = ++solicitudRutaMonitoreo;
 
             /*
              * Eliminar la ruta anterior.
@@ -3041,6 +3055,14 @@
 
                 const datos =
                     await respuesta.json();
+
+                // Ignorar rutas de solicitudes anteriores.
+                if (
+                    solicitudActual !== solicitudRutaMonitoreo ||
+                    Number(alerta.id_alerta) !== Number(idAlertaSeleccionada)
+                ) {
+                    return;
+                }
 
 
                 if (
