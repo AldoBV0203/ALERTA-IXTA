@@ -192,6 +192,7 @@ class AlertaController extends Controller
 
     // con este metodo obtenemos las alertas del ciudadano autenticado.
 
+    // Obtener las alertas del ciudadano autenticado.
     public function misAlertas(Request $request)
     {
         $usuario = $request->user();
@@ -201,26 +202,63 @@ class AlertaController extends Controller
         ])
             ->where('id_usuario', $usuario->id)
             ->orderByDesc('id_alerta')
+            ->get();
+
+        // Buscar quién aceptó cada alerta.
+        $asignaciones = SeguimientoAlerta::whereIn(
+            'id_alerta',
+            $alertas->pluck('id_alerta')
+        )
+            ->where('accion', 'ACEPTO_ALERTA')
+            ->orderBy('id')
             ->get()
-            ->map(function ($alerta) {
+            ->unique('id_alerta')
+            ->keyBy('id_alerta');
 
-                return [
-                    'id_alerta' => $alerta->id_alerta,
+        // Consultar los policías que atendieron las alertas.
+        $policias = Operador::whereIn(
+            'id_operador',
+            $asignaciones->pluck('id_operador')->filter()->unique()
+        )
+            ->where('rol', 'POLICIA')
+            ->get()
+            ->keyBy('id_operador');
 
-                    'folio' => $alerta->folio,
+        // Preparar los datos del historial.
+        $historial = $alertas->map(function ($alerta) use (
+            $asignaciones,
+            $policias
+        ) {
 
-                    'tipo' => $alerta->tipo?->nombre,
+            $asignacion = $asignaciones->get(
+                $alerta->id_alerta
+            );
 
-                    'fecha_hora' => $alerta->fecha_hora,
+            $policia = $asignacion
+                ? $policias->get($asignacion->id_operador)
+                : null;
 
-                    'prioridad' => $alerta->prioridad,
+            return [
+                'id_alerta' => $alerta->id_alerta,
 
-                    'estado' => $alerta->estado,
-                ];
-            });
+                'folio' => $alerta->folio,
+
+                'tipo' => $alerta->tipo?->nombre,
+
+                'fecha_hora' => $alerta->fecha_hora,
+
+                'prioridad' => $alerta->prioridad,
+
+                'estado' => $alerta->estado,
+
+                'policia' => $policia ? [
+                    'nombre' => $policia->nombre
+                ] : null,
+            ];
+        });
 
         return response()->json([
-            'alertas' => $alertas,
+            'alertas' => $historial,
         ]);
     }
 

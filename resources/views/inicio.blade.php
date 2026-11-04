@@ -228,6 +228,56 @@
             display: block;
             margin-top: 0;
         }
+
+        .acceso-historial-ciudadano {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 16px;
+            margin: 18px 0;
+            background: white;
+            border: 1px solid #dddddd;
+            border-radius: 10px;
+            color: #691C32;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .acceso-historial-ciudadano span:first-child {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .acceso-historial-ciudadano small {
+            color: #666666;
+            font-size: 12px;
+        }
+
+        .acceso-historial-ciudadano span:last-child {
+            font-size: 26px;
+            font-weight: bold;
+        }
+
+        .tarjeta-historial {
+            background: #FFFFFF;
+            border: 1px solid #DDDDDD;
+            border-left: 4px solid #691C32;
+            border-radius: 10px;
+            padding: 14px;
+            margin-top: 12px;
+        }
+
+        .tarjeta-historial p {
+            margin: 8px 0;
+            font-size: 13px;
+            overflow-wrap: anywhere;
+        }
+
+        .tarjeta-historial strong {
+            color: #691C32;
+        }
     </style>
 
 </head>
@@ -432,10 +482,44 @@
 
                     <button
                         type="button"
+                        id="btnHistorialCiudadano"
+                        class="acceso-historial-ciudadano"
+                        onclick="abrirHistorialCiudadano()">
+
+                        <span>
+                            <strong>Historial de alertas</strong>
+                            <small>Consulta tus emergencias anteriores</small>
+                        </span>
+
+                        <span aria-hidden="true">›</span>
+
+                    </button>
+
+                    <button
+                        type="button"
                         class="boton boton-cerrar-sesion"
                         onclick="cerrarSesion()">
                         Cerrar sesión
                     </button>
+
+                    <div
+                        id="vistaHistorialCiudadano"
+                        style="display: none;">
+
+                        <button
+                            type="button"
+                            class="boton boton-secundario"
+                            onclick="volverCuentaCiudadano()">
+                            ← Volver a mi cuenta
+                        </button>
+
+                        <h2>Historial de alertas</h2>
+
+                        <div id="listaHistorialCiudadano">
+                            Aquí se mostrarán tus alertas anteriores.
+                        </div>
+
+                    </div>
 
                 </section>
 
@@ -572,6 +656,207 @@
                 });
         }
 
+        // Consultar las alertas anteriores del ciudadano.
+        async function cargarHistorialCiudadano() {
+
+            const lista = document.getElementById(
+                'listaHistorialCiudadano'
+            );
+
+            lista.textContent = 'Cargando historial...';
+
+            try {
+
+                const respuesta = await fetch(
+                    API + '/mis-alertas', {
+                        headers: {
+                            'Authorization': 'Bearer ' + token,
+                            'Accept': 'application/json'
+                        }
+                    }
+                );
+
+                if (!respuesta.ok) {
+                    lista.textContent =
+                        'No fue posible consultar el historial.';
+                    return;
+                }
+
+                const datos = await respuesta.json();
+
+                const alertas = Array.isArray(datos) ?
+                    datos :
+                    (datos.alertas ?? []);
+
+                if (!Array.isArray(alertas)) {
+                    lista.textContent =
+                        'No se pudo interpretar el historial.';
+                    return;
+                }
+
+                // Mostrar solamente alertas terminadas o canceladas.
+                const historial = alertas.filter(function(alerta) {
+
+                    return (
+                        alerta.estado === 'CERRADA' ||
+                        alerta.estado === 'CANCELADA'
+                    );
+
+                });
+
+                lista.replaceChildren();
+
+                if (historial.length === 0) {
+
+                    lista.textContent =
+                        'Todavía no tienes alertas finalizadas.';
+
+                    return;
+                }
+
+                historial.forEach(function(alerta) {
+
+                    const tarjeta = document.createElement('div');
+
+                    tarjeta.className = 'tarjeta-historial';
+
+                    const tipo = typeof alerta.tipo === 'object' ?
+                        alerta.tipo?.nombre :
+                        alerta.tipo;
+
+                    const policia = typeof alerta.policia === 'object' ?
+                        alerta.policia?.nombre :
+                        alerta.policia;
+
+                    // Obtener la fecha real de la alerta.
+                    const fechaOriginal =
+                        alerta.fecha_hora ??
+                        alerta.fecha_creacion ??
+                        alerta.created_at ??
+                        alerta.fecha ??
+                        null;
+
+                    let fecha = 'No disponible';
+
+                    if (fechaOriginal) {
+
+                        const fechaObjeto = new Date(fechaOriginal);
+
+                        if (!Number.isNaN(fechaObjeto.getTime())) {
+
+                            // Mostrar la fecha en horario de Ixtapaluca.
+                            fecha = new Intl.DateTimeFormat('es-MX', {
+                                day: 'numeric',
+                                month: 'long',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                hour12: false,
+                                timeZone: 'America/Mexico_City'
+                            }).format(fechaObjeto) + ' h';
+
+                        } else {
+
+                            fecha = String(fechaOriginal);
+
+                        }
+                    }
+
+                    const campos = [
+                        ['Folio', alerta.folio ?? 'No disponible'],
+                        ['Fecha', fecha],
+                        ['Tipo', tipo ?? 'No disponible'],
+                        ['Estado', alerta.estado],
+                        ['Policía', policia ?? 'Sin asignar']
+                    ];
+
+                    campos.forEach(function(campo) {
+
+                        const parrafo = document.createElement('p');
+
+                        const etiqueta = document.createElement('strong');
+
+                        etiqueta.textContent = campo[0] + ': ';
+
+                        parrafo.appendChild(etiqueta);
+
+                        parrafo.appendChild(
+                            document.createTextNode(
+                                String(campo[1])
+                            )
+                        );
+
+                        tarjeta.appendChild(parrafo);
+
+                    });
+
+                    lista.appendChild(tarjeta);
+
+                });
+
+            } catch (error) {
+
+                console.error(
+                    'Error consultando historial:',
+                    error
+                );
+
+                lista.textContent =
+                    'No fue posible conectar con el servidor.';
+
+            }
+        }
+
+        // Abrir el historial dentro de Cuenta.
+        function abrirHistorialCiudadano() {
+
+            const cuenta = document.getElementById(
+                'panelCuentaCiudadano'
+            );
+
+            const historial = document.getElementById(
+                'vistaHistorialCiudadano'
+            );
+
+            Array.from(cuenta.children).forEach(function(elemento) {
+                if (elemento !== historial) {
+                    elemento.style.display = 'none';
+                }
+            });
+
+            historial.style.display = 'block';
+
+            // Consultar las alertas guardadas en MySQL.
+            cargarHistorialCiudadano();
+
+            document.getElementById('pantallaContenido')
+                .scrollTo({
+                    top: 0,
+                    behavior: 'auto'
+                });
+        }
+
+
+        // Regresar del historial a Mi cuenta.
+        function volverCuentaCiudadano() {
+
+            const cuenta = document.getElementById(
+                'panelCuentaCiudadano'
+            );
+
+            const historial = document.getElementById(
+                'vistaHistorialCiudadano'
+            );
+
+            historial.style.display = 'none';
+
+            Array.from(cuenta.children).forEach(function(elemento) {
+                if (elemento !== historial) {
+                    elemento.style.removeProperty('display');
+                }
+            });
+
+        }
 
         // Navegar entre Inicio, SOS y Cuenta.
         function navegarCiudadano(seccion) {
