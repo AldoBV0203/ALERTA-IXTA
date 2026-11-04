@@ -12,7 +12,7 @@
 
     <link
         rel="stylesheet"
-        href="{{ asset('css/alerta.css') }}">
+        href="{{ asset('css/alerta.css') }}?v=2">
 
     <link
         rel="stylesheet"
@@ -85,13 +85,120 @@
         }
 
         .sos {
+            position: relative;
+            isolation: isolate;
+            overflow: visible;
             touch-action: none;
             user-select: none;
         }
 
-        .sos-presionando {
-            transform: scale(0.94);
-            opacity: 0.85;
+        .sos-texto {
+            position: relative;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .sos::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: #ef5350;
+            transform: scale(0);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .sos-presionando::before {
+            opacity: 1;
+            animation: llenarBotonSOS 3s linear forwards;
+        }
+
+        .sos-completado::before {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .sos-completado::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border: 4px solid #ef5350;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: expansionSOS 0.8s ease-out forwards;
+        }
+
+        .sos-anillo {
+            position: absolute;
+            width: 220px;
+            height: 220px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-90deg);
+            pointer-events: none;
+            overflow: visible;
+            z-index: 0;
+        }
+
+        .sos-anillo-fondo {
+            fill: none;
+            stroke: #F2CAD0;
+            stroke-width: 7;
+            opacity: 0.6;
+        }
+
+        .sos-anillo-avance {
+            fill: none;
+            stroke: #D9334A;
+            stroke-width: 8;
+            stroke-linecap: round;
+            stroke-dasharray: 628.32;
+            stroke-dashoffset: 628.32;
+            opacity: 0;
+        }
+
+        .sos-presionando .sos-anillo-avance {
+            opacity: 1;
+            animation: progresoAnilloSOS 3s linear forwards;
+        }
+
+        .sos-completado .sos-anillo-avance {
+            opacity: 1;
+            stroke-dashoffset: 0;
+        }
+
+        @keyframes progresoAnilloSOS {
+            from {
+                stroke-dashoffset: 628.32;
+            }
+
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        @keyframes llenarBotonSOS {
+            from {
+                transform: scale(0);
+            }
+
+            to {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes expansionSOS {
+            0% {
+                opacity: 0.9;
+                transform: scale(1);
+            }
+
+            100% {
+                opacity: 0;
+                transform: scale(1.4);
+            }
         }
 
         @keyframes pulsoEmergencia {
@@ -114,161 +221,215 @@
 
 <body>
 
-    <div class="contenedor">
+    <div class="contenedor contenedor-app-movil">
 
-        <div class="app">
+        <div class="app app-movil">
 
-            <img
-                src="{{ asset('images/logoIxtapaluca2025.png') }}"
-                alt="Gobierno de Ixtapaluca"
-                class="logo-ixtapaluca">
+            <!-- Barra superior de la aplicación -->
+            <header class="app-cabecera">
 
-            <div class="logo">
-                ALERTA IXTA
-            </div>
+                <img
+                    src="{{ asset('images/logoIxtapaluca2025.png') }}"
+                    alt="Gobierno de Ixtapaluca"
+                    class="app-cabecera-logo">
 
-            <h2 id="saludo">
-                Hola
-            </h2>
+                <div class="app-cabecera-texto">
 
-            <p class="info">
-                Selecciona el tipo de alerta y solicita ayuda.
-            </p>
+                    <h1 class="app-cabecera-titulo">
+                        ALERTA IXTA
+                    </h1>
 
+                    <p class="app-cabecera-subtitulo">
+                        Sistema Municipal de Alerta
+                    </p>
 
-            <div class="campo">
+                </div>
 
-                <label>
-                    Tipo de alerta
-                </label>
+                <div aria-hidden="true"></div>
 
-                <select id="tipoAlerta">
+            </header>
 
-                    <option value="">
-                        Cargando tipos...
-                    </option>
+            <!-- Contenido principal de la aplicación -->
+            <main class="app-contenido" id="pantallaContenido">
 
-                </select>
-
-            </div>
+                <h2 id="saludo">
+                    Hola
+                </h2>
 
 
-            <div id="mapa"></div>
+                <div class="campo" id="campoTipoAlerta" style="display: none;">
+
+                    <label>
+                        Tipo de alerta
+                    </label>
+
+                    <select id="tipoAlerta">
+
+                        <option value="">
+                            Cargando tipos...
+                        </option>
+
+                    </select>
+
+                </div>
 
 
-            <div class="ubicacion" id="textoUbicacion">
-                📍 Obteniendo ubicación...
-            </div>
-
-            <button
-                type="button"
-                class="boton boton-secundario"
-                onclick="corregirUbicacionManual()">
-                Corregir ubicación en el mapa
-            </button>
+                <div id="mapa"></div>
 
 
-            <div class="sos-contenedor">
+                <div class="ubicacion" id="textoUbicacion">
+                    📍 Obteniendo ubicación...
+                </div>
 
                 <button
                     type="button"
-                    class="sos"
-                    id="btnSOS">
+                    class="boton boton-secundario"
+                    onclick="corregirUbicacionManual()">
+                    Corregir ubicación en el mapa
+                </button>
+
+
+                <div class="sos-contenedor">
+
+                    <button
+                        type="button"
+                        class="sos"
+                        id="btnSOS">
+
+                        <svg
+                            class="sos-anillo"
+                            viewBox="0 0 220 220"
+                            aria-hidden="true">
+
+                            <circle
+                                class="sos-anillo-fondo"
+                                cx="110"
+                                cy="110"
+                                r="100">
+                            </circle>
+
+                            <circle
+                                class="sos-anillo-avance"
+                                cx="110"
+                                cy="110"
+                                r="100">
+                            </circle>
+
+                        </svg>
+
+                        <span class="sos-texto">SOS</span>
+
+                    </button>
+
+                    <div
+                        class="instruccion"
+                        id="instruccionSOS">
+                        Mantén presionado SOS durante 3 segundos
+                    </div>
+
+                </div>
+
+
+                <div
+                    id="mensajeAlerta"
+                    class="mensaje">
+                </div>
+
+
+                <div
+                    id="panelEstado"
+                    class="estado-alerta"
+                    style="display: none;">
+
+                    <h3>
+                        Estado de mi alerta
+                    </h3>
+
+                    <p>
+                        <strong>Folio:</strong>
+                        <span id="folio">
+                            -
+                        </span>
+                    </p>
+
+                    <p>
+                        <strong>Tipo:</strong>
+                        <span id="tipoActual">
+                            -
+                        </span>
+                    </p>
+
+                    <p>
+                        <strong>Estado:</strong>
+                        <span id="estado">
+                            -
+                        </span>
+                    </p>
+
+                    <p>
+                        <strong>Policía asignado:</strong>
+                        <span id="policia">
+                            Sin asignar
+                        </span>
+                    </p>
+
+                    <p id="filaDistancia" style="display: none;">
+                        <strong>Distancia aproximada:</strong>
+                        <span id="distanciaPolicia">
+                            -
+                        </span>
+                    </p>
+
+                    <p id="filaTiempo" style="display: none;">
+                        <strong>Tiempo aproximado:</strong>
+                        <span id="tiempoPolicia">
+                            -
+                        </span>
+                    </p>
+
+                    <button
+                        type="button"
+                        id="btnCancelarAlerta"
+                        class="boton boton-cancelar-alerta"
+                        onclick="cancelarAlerta()"
+                        style="display: none;">
+                        Cancelar alerta
+                    </button>
+
+                </div>
+
+                <button
+                    type="button"
+                    class="boton boton-cerrar-sesion"
+                    onclick="cerrarSesion()">
+                    Cerrar sesión
+                </button>
+
+            </main>
+
+            <!-- Barra de navegación inferior -->
+            <nav class="app-nav-inferior" aria-label="Navegación principal">
+
+                <button
+                    type="button"
+                    class="activo"
+                    onclick="document.getElementById('pantallaContenido').scrollTo({top: 0, behavior: 'smooth'})">
+                    Inicio
+                </button>
+
+                <button
+                    type="button"
+                    onclick="document.getElementById('btnSOS').scrollIntoView({behavior: 'smooth', block: 'center'})">
                     SOS
                 </button>
 
-                <div
-                    class="instruccion"
-                    id="instruccionSOS">
-                    Mantén presionado SOS durante 3 segundos
-                </div>
-
-            </div>
-
-
-            <div
-                id="mensajeAlerta"
-                class="mensaje">
-            </div>
-
-
-            <div
-                id="panelEstado"
-                class="estado-alerta"
-                style="display: none;">
-
-                <h3>
-                    Estado de mi alerta
-                </h3>
-
-                <p>
-                    <strong>Folio:</strong>
-                    <span id="folio">
-                        -
-                    </span>
-                </p>
-
-                <p>
-                    <strong>Tipo:</strong>
-                    <span id="tipoActual">
-                        -
-                    </span>
-                </p>
-
-                <p>
-                    <strong>Estado:</strong>
-                    <span id="estado">
-                        -
-                    </span>
-                </p>
-
-                <p>
-                    <strong>Policía asignado:</strong>
-                    <span id="policia">
-                        Sin asignar
-                    </span>
-                </p>
-
-                <p id="filaDistancia" style="display: none;">
-                    <strong>Distancia aproximada:</strong>
-                    <span id="distanciaPolicia">
-                        -
-                    </span>
-                </p>
-
-                <p id="filaTiempo" style="display: none;">
-                    <strong>Tiempo aproximado:</strong>
-                    <span id="tiempoPolicia">
-                        -
-                    </span>
-                </p>
-
                 <button
                     type="button"
-                    id="btnCancelarAlerta"
-                    class="boton boton-cancelar-alerta"
-                    onclick="cancelarAlerta()"
-                    style="display: none;">
-                    Cancelar alerta
+                    onclick="cargarMisAlertas()">
+                    Actualizar
                 </button>
 
-            </div>
-
-
-            <button
-                type="button"
-                class="boton boton-secundario"
-                onclick="cargarMisAlertas()">
-                Actualizar estado
-            </button>
-
-
-            <button
-                type="button"
-                class="boton boton-cerrar-sesion"
-                onclick="cerrarSesion()">
-                Cerrar sesión
-            </button>
+            </nav>
 
         </div>
 
@@ -312,6 +473,7 @@
         let ubicacionManualCiudadano = false;
 
         let temporizadorSOS = null;
+        let temporizadorAnimacionSOS = null;
 
         let sosPresionado = false;
 
@@ -506,6 +668,15 @@
                         }
                     );
 
+                }
+
+                // Seleccionar Seguridad automáticamente.
+                const opcionSeguridad = Array.from(select.options).find(
+                    opcion => opcion.textContent.trim().toLowerCase() === 'seguridad'
+                );
+
+                if (opcionSeguridad) {
+                    select.value = opcionSeguridad.value;
                 }
 
 
@@ -930,15 +1101,19 @@
                 return;
             }
 
+            sosPresionado = true;
 
-            sosPresionado =
-                true;
+            // Detener cualquier animación anterior.
+            if (temporizadorAnimacionSOS !== null) {
+                clearTimeout(temporizadorAnimacionSOS);
+                temporizadorAnimacionSOS = null;
+            }
 
+            // Reiniciar el efecto visual.
+            btnSOS.classList.remove('sos-completado');
 
-            btnSOS.classList.add(
-                'sos-presionando'
-            );
-
+            // Comenzar el llenado del círculo durante 3 segundos.
+            btnSOS.classList.add('sos-presionando');
 
             instruccionSOS.textContent =
                 'Sigue presionando...';
@@ -966,15 +1141,20 @@
                             sosProcesando =
                                 true;
 
+                            // El círculo terminó de llenarse.
+                            btnSOS.classList.remove('sos-presionando');
 
-                            btnSOS.classList.remove(
-                                'sos-presionando'
-                            );
+                            // Mostrar la onda expansiva.
+                            btnSOS.classList.add('sos-completado');
 
+                            // Retirar el efecto después de 0.8 segundos.
+                            temporizadorAnimacionSOS = setTimeout(function() {
+                                btnSOS.classList.remove('sos-completado');
+                                temporizadorAnimacionSOS = null;
+                            }, 800);
 
                             instruccionSOS.textContent =
                                 'Enviando alerta...';
-
 
                             await crearAlerta();
 
@@ -1018,21 +1198,16 @@
                     null;
             }
 
-
-            btnSOS.classList.remove(
-                'sos-presionando'
-            );
-
+            // Cancelar el llenado si no se completaron los 3 segundos.
+            btnSOS.classList.remove('sos-presionando');
+            btnSOS.classList.remove('sos-completado');
 
             instruccionSOS.textContent =
                 'Mantén presionado SOS durante 3 segundos';
+
         }
 
-
-        /*
-         * Pointer Events funcionan tanto
-         * con mouse como con pantalla táctil.
-         */
+        // Eventos para detectar cuando se presiona y suelta el botón.
         btnSOS.addEventListener(
             'pointerdown',
             iniciarPresionSOS
