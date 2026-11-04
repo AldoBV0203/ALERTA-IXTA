@@ -12,7 +12,7 @@
 
     <link
         rel="stylesheet"
-        href="{{ asset('css/alerta.css') }}">
+        href="{{ asset('css/alerta.css') }}?v=3">
 
     <link
         rel="stylesheet"
@@ -118,223 +118,413 @@
             color: white;
             font-weight: bold;
         }
+
+        .contador-alertas {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 20px;
+            height: 20px;
+            padding: 0 5px;
+            margin-left: 4px;
+            background: #9F2241;
+            color: white;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .contador-alertas.oculto {
+            display: none;
+        }
+
+        /* Aviso visible cuando existe una oferta policial pendiente. */
+        .aviso-oferta-policia {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            background: #F8E8EC;
+            border-top: 2px solid #9F2241;
+            padding: 12px;
+            flex-shrink: 0;
+        }
+
+        .aviso-oferta-policia.oculto {
+            display: none;
+        }
+
+        .aviso-oferta-texto {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 12px;
+            color: #691C32;
+        }
+
+        .aviso-oferta-texto strong {
+            font-size: 13px;
+        }
+
+        .aviso-oferta-policia button {
+            background: #691C32;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .indicador-disponibilidad {
+            display: inline-block;
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .indicador-disponibilidad.disponible {
+            background: #E8F5EE;
+            color: #235B4E;
+        }
+
+        .indicador-disponibilidad.en-servicio {
+            background: #FFF2DD;
+            color: #956014;
+        }
     </style>
 
 </head>
 
 <body>
 
-    <div class="contenedor">
+    <div class="contenedor contenedor-app-movil">
 
-        <div class="app">
+        <div class="app app-movil">
 
-            <img
-                src="{{ asset('images/logoIxtapaluca2025.png') }}"
-                alt="Gobierno de Ixtapaluca"
-                class="logo-ixtapaluca">
+            <header class="app-cabecera">
 
-            <div class="logo">
-                ALERTA IXTA
-            </div>
+                <img
+                    src="{{ asset('images/logoIxtapaluca2025.png') }}"
+                    alt="Gobierno de Ixtapaluca"
+                    class="app-cabecera-logo">
 
-            <div id="loginPolicia">
+                <div class="app-cabecera-texto">
 
-                <h2>
-                    Acceso policial
-                </h2>
+                    <h1 class="app-cabecera-titulo">
+                        ALERTA IXTA
+                    </h1>
 
-                <div class="campo">
-
-                    <label>
-                        Usuario
-                    </label>
-
-                    <input
-                        type="text"
-                        id="usuarioPolicia"
-                        placeholder="Usuario">
+                    <p class="app-cabecera-subtitulo">
+                        Sistema Municipal de Alerta
+                    </p>
 
                 </div>
 
-                <div class="campo">
+                <div aria-hidden="true"></div>
 
-                    <label>
-                        Contraseña
-                    </label>
+            </header>
 
-                    <input
-                        type="password"
-                        id="passwordPolicia"
-                        placeholder="Contraseña">
+            <main class="app-contenido" id="pantallaContenidoPolicia">
+
+                <div id="loginPolicia">
+
+                    <h2>
+                        Acceso policial
+                    </h2>
+
+                    <div class="campo">
+
+                        <label>
+                            Usuario
+                        </label>
+
+                        <input
+                            type="text"
+                            id="usuarioPolicia"
+                            placeholder="Usuario">
+
+                    </div>
+
+                    <div class="campo">
+
+                        <label>
+                            Contraseña
+                        </label>
+
+                        <input
+                            type="password"
+                            id="passwordPolicia"
+                            placeholder="Contraseña">
+
+                    </div>
+
+                    <button
+                        type="button"
+                        class="boton"
+                        onclick="iniciarSesionPolicia()">
+
+                        Iniciar sesión
+
+                    </button>
+
+                    <div
+                        id="mensajeLoginPolicia"
+                        class="mensaje">
+                    </div>
 
                 </div>
 
-                <button
-                    type="button"
-                    class="boton"
-                    onclick="iniciarSesionPolicia()">
-
-                    Iniciar sesión
-
-                </button>
 
                 <div
-                    id="mensajeLoginPolicia"
-                    class="mensaje">
+                    id="panelPolicia"
+                    class="oculto">
+
+                    <div id="vistaTrabajoPolicia">
+
+                        <section id="vistaInicioPolicia">
+
+                            <h2 id="saludoPolicia">
+                                Policía
+                            </h2>
+
+                            <div
+                                id="indicadorDisponibilidadPolicia"
+                                class="indicador-disponibilidad disponible">
+                                Disponible
+                            </div>
+
+                            <div
+                                id="servicioActual"
+                                class="estado-policia oculto">
+
+                                <h3>
+                                    🚨 Mi servicio actual
+                                </h3>
+
+                                <p>
+                                    <strong>Folio:</strong>
+                                    <span id="folioServicio">-</span>
+                                </p>
+
+                                <p>
+                                    <strong>Tipo:</strong>
+                                    <span id="tipoServicio">-</span>
+                                </p>
+
+                                <p>
+                                    <strong>Estado:</strong>
+                                    <span id="estadoServicio">-</span>
+                                </p>
+
+                                <p>
+                                    <strong>Mi ubicación:</strong>
+                                    <span id="ubicacionPoliciaTexto">
+                                        Esperando ubicación...
+                                    </span>
+                                </p>
+
+                                <p>
+                                    <strong>Dirección:</strong>
+                                    <span id="direccionServicio">
+                                        Obteniendo...
+                                    </span>
+                                </p>
+
+                                <p>
+                                    <strong>Distancia:</strong>
+                                    <span id="distanciaServicio">
+                                        -
+                                    </span>
+                                </p>
+
+                                <p>
+                                    <strong>Tiempo estimado:</strong>
+                                    <span id="tiempoServicio">
+                                        -
+                                    </span>
+                                </p>
+
+                                <button
+                                    type="button"
+                                    id="btnFinalizar"
+                                    class="boton btn-finalizar"
+                                    onclick="finalizarAtencion()"
+                                    style="display: none;">
+                                    Finalizar atención
+                                </button>
+
+                            </div>
+
+                        </section>
+
+                        <section
+                            id="vistaAlertasPolicia"
+                            class="oculto">
+
+                            <p class="info">
+                                Alertas de seguridad pendientes
+                            </p>
+
+
+                            <div id="listaAlertas">
+
+                                Cargando alertas...
+
+                            </div>
+
+                        </section>
+
+
+                        <div id="mapaPolicia"></div>
+
+                        <button
+                            type="button"
+                            class="boton boton-secundario"
+                            onclick="volverAUbicacionPolicia()">
+
+                            Volver a mi ubicación
+
+                        </button>
+
+                        <button
+                            type="button"
+                            class="boton boton-secundario"
+                            onclick="corregirUbicacionPolicia()">
+                            Corregir mi ubicación para prueba
+                        </button>
+
+
+                        <div
+                            id="detalleAlerta"
+                            class="estado-policia oculto">
+
+                            <p>
+                                <strong>Folio:</strong>
+                                <span id="folioPolicia">-</span>
+                            </p>
+
+                            <p>
+                                <strong>Tipo:</strong>
+                                <span id="tipoPolicia">-</span>
+                            </p>
+
+                            <p>
+                                <strong>Estado:</strong>
+                                <span id="estadoPolicia">-</span>
+                            </p>
+
+                            <button
+                                type="button"
+                                id="btnAceptar"
+                                class="boton btn-aceptar"
+                                onclick="aceptarAlerta()">
+
+                                Aceptar alerta
+
+                            </button>
+
+                            <button
+                                type="button"
+                                id="btnRechazar"
+                                class="boton btn-rechazar"
+                                onclick="rechazarAlerta()">
+
+                                Rechazar alerta
+
+                            </button>
+
+                        </div>
+
+
+                        <div
+                            id="mensajePolicia"
+                            class="mensaje">
+                        </div>
+
+                    </div>
+
+                    <div
+                        id="panelCuentaPolicia"
+                        class="estado-policia oculto">
+
+                        <h3>Mi cuenta</h3>
+
+                        <p>
+                            <strong>Nombre:</strong>
+                            <span id="nombreCuentaPolicia">Policía</span>
+                        </p>
+
+                        <p>
+                            <strong>Rol:</strong>
+                            Policía
+                        </p>
+
+                        <button
+                            type="button"
+                            class="boton"
+                            style="background: #691C32; margin-top: 20px;"
+                            onclick="cerrarSesionPolicia()">
+                            Cerrar sesión
+                        </button>
+
+                    </div>
+
                 </div>
 
-            </div>
+            </main>
 
-
+            <!-- Aviso de oferta policial pendiente -->
             <div
-                id="panelPolicia"
-                class="oculto">
+                id="avisoOfertaPolicia"
+                class="aviso-oferta-policia oculto"
+                role="alert">
 
-                <h2 id="saludoPolicia">
-                    Policía
-                </h2>
-
-                <div
-                    id="servicioActual"
-                    class="estado-policia oculto">
-
-                    <h3>
-                        🚨 Mi servicio actual
-                    </h3>
-
-                    <p>
-                        <strong>Folio:</strong>
-                        <span id="folioServicio">-</span>
-                    </p>
-
-                    <p>
-                        <strong>Tipo:</strong>
-                        <span id="tipoServicio">-</span>
-                    </p>
-
-                    <p>
-                        <strong>Estado:</strong>
-                        <span id="estadoServicio">-</span>
-                    </p>
-
-                    <p>
-                        <strong>Mi ubicación:</strong>
-                        <span id="ubicacionPoliciaTexto">
-                            Esperando ubicación...
-                        </span>
-                    </p>
-
-                    <p>
-                        <strong>Dirección:</strong>
-                        <span id="direccionServicio">
-                            Obteniendo...
-                        </span>
-                    </p>
-
-                    <p>
-                        <strong>Distancia:</strong>
-                        <span id="distanciaServicio">
-                            -
-                        </span>
-                    </p>
-
-                    <p>
-                        <strong>Tiempo estimado:</strong>
-                        <span id="tiempoServicio">
-                            -
-                        </span>
-                    </p>
-
-                    <button
-                        type="button"
-                        id="btnFinalizar"
-                        class="boton btn-finalizar"
-                        onclick="finalizarAtencion()"
-                        style="display: none;">
-                        Finalizar atención
-                    </button>
-
+                <div class="aviso-oferta-texto">
+                    <strong>Nueva alerta de Seguridad</strong>
+                    <span>Tienes una solicitud de ayuda pendiente.</span>
                 </div>
-
-                <p class="info">
-                    Alertas de seguridad pendientes
-                </p>
-
-
-                <div id="listaAlertas">
-
-                    Cargando alertas...
-
-                </div>
-
-
-                <div id="mapaPolicia"></div>
 
                 <button
                     type="button"
-                    class="boton boton-secundario"
-                    onclick="volverAUbicacionPolicia()">
-
-                    Volver a mi ubicación
-
+                    onclick="abrirOfertaPolicia()">
+                    Ver alerta
                 </button>
-
-                <button
-                    type="button"
-                    class="boton boton-secundario"
-                    onclick="corregirUbicacionPolicia()">
-                    Corregir mi ubicación para prueba
-                </button>
-
-
-                <div
-                    id="detalleAlerta"
-                    class="estado-policia oculto">
-
-                    <p>
-                        <strong>Folio:</strong>
-                        <span id="folioPolicia">-</span>
-                    </p>
-
-                    <p>
-                        <strong>Tipo:</strong>
-                        <span id="tipoPolicia">-</span>
-                    </p>
-
-                    <p>
-                        <strong>Estado:</strong>
-                        <span id="estadoPolicia">-</span>
-                    </p>
-
-                    <button
-                        type="button"
-                        id="btnAceptar"
-                        class="boton btn-aceptar"
-                        onclick="aceptarAlerta()">
-
-                        Aceptar alerta
-
-                    </button>
-
-                    <button
-                        type="button"
-                        id="btnRechazar"
-                        class="boton btn-rechazar"
-                        onclick="rechazarAlerta()">
-
-                        Rechazar alerta
-
-                    </button>
-
-                </div>
-
-
-                <div
-                    id="mensajePolicia"
-                    class="mensaje">
-                </div>
 
             </div>
+
+            <nav
+                id="navPolicia"
+                class="app-nav-inferior"
+                aria-label="Navegación policial"
+                style="display: none;">
+
+                <button
+                    type="button"
+                    class="activo"
+                    onclick="navegarPolicia('inicio', this)">
+                    Inicio
+                </button>
+
+                <button
+                    type="button"
+                    id="pestanaAlertasPolicia"
+                    onclick="navegarPolicia('alertas', this)">
+                    Alertas
+                    <span id="contadorAlertasPolicia" class="contador-alertas oculto">0</span>
+                </button>
+
+                <button
+                    type="button"
+                    onclick="navegarPolicia('cuenta', this)">
+                    Cuenta
+                </button>
+
+            </nav>
 
         </div>
 
@@ -402,6 +592,145 @@
             iconAnchor: [21, 21]
         });
 
+        // Abrir las alertas pendientes desde el aviso.
+        function abrirOfertaPolicia() {
+
+            const botonAlertas = document.getElementById(
+                'pestanaAlertasPolicia'
+            );
+
+            if (botonAlertas) {
+                navegarPolicia('alertas', botonAlertas);
+            }
+        }
+
+        // Navegar entre las secciones del panel policial.
+        // Cambiar entre Inicio, Alertas y Cuenta.
+        function navegarPolicia(seccion, boton) {
+
+            const contenido = document.getElementById(
+                'pantallaContenidoPolicia'
+            );
+
+            const vistaTrabajo = document.getElementById(
+                'vistaTrabajoPolicia'
+            );
+
+            const vistaInicio = document.getElementById(
+                'vistaInicioPolicia'
+            );
+
+            const vistaAlertas = document.getElementById(
+                'vistaAlertasPolicia'
+            );
+
+            const vistaCuenta = document.getElementById(
+                'panelCuentaPolicia'
+            );
+
+            // Mostrar únicamente la sección seleccionada.
+            if (seccion === 'cuenta') {
+
+                vistaTrabajo.classList.add('oculto');
+                vistaCuenta.classList.remove('oculto');
+
+            } else {
+
+                vistaCuenta.classList.add('oculto');
+                vistaTrabajo.classList.remove('oculto');
+
+                if (seccion === 'inicio') {
+                    vistaInicio.classList.remove('oculto');
+                    vistaAlertas.classList.add('oculto');
+                }
+
+                if (seccion === 'alertas') {
+                    vistaInicio.classList.add('oculto');
+                    vistaAlertas.classList.remove('oculto');
+                }
+
+                // Ajustar el mapa después de cambiar de sección.
+                if (mapaPolicia) {
+                    requestAnimationFrame(function() {
+                        mapaPolicia.invalidateSize();
+                    });
+                }
+            }
+
+            // Regresar al principio del contenido.
+            contenido.scrollTo({
+                top: 0,
+                behavior: 'auto'
+            });
+
+            // Actualizar la pestaña seleccionada.
+            document.querySelectorAll('#navPolicia button')
+                .forEach(function(elemento) {
+                    elemento.classList.remove('activo');
+                });
+
+            boton.classList.add('activo');
+        }
+
+        // Cerrar la sesión del policía.
+        async function cerrarSesionPolicia() {
+
+            // No cerrar sesión mientras se atiende una emergencia.
+            if (idServicioActual !== null) {
+                alert('No puedes cerrar sesión mientras atiendes una alerta.');
+                return;
+            }
+
+            const confirmar = confirm(
+                '¿Deseas cerrar tu sesión?'
+            );
+
+            if (!confirmar) {
+                return;
+            }
+
+            try {
+
+                const respuesta = await fetch(
+                    API + '/logout', {
+                        method: 'POST',
+
+                        headers: {
+                            'Authorization': 'Bearer ' + tokenPolicia,
+                            'Accept': 'application/json'
+                        }
+                    }
+                );
+
+                if (!respuesta.ok) {
+                    alert('No fue posible cerrar la sesión. Intenta nuevamente.');
+                    return;
+                }
+
+                // Detener el envío automático de ubicación.
+                if (intervaloUbicacion !== null) {
+                    clearInterval(intervaloUbicacion);
+                    intervaloUbicacion = null;
+                }
+
+                // Eliminar el token guardado en el navegador.
+                sessionStorage.removeItem(
+                    'alerta_ixta_token_policia'
+                );
+
+                tokenPolicia = null;
+
+                // Regresar a la pantalla de acceso policial.
+                window.location.reload();
+
+            } catch (error) {
+
+                console.error('Error al cerrar sesión:', error);
+
+                alert('No fue posible conectar con el servidor.');
+
+            }
+        }
 
         async function iniciarSesionPolicia() {
 
@@ -514,6 +843,13 @@
                     )
                     .classList
                     .remove('oculto');
+
+                // Mostrar la barra inferior después de iniciar sesión.
+                document.getElementById('navPolicia').style.display = 'flex';
+
+                // Mostrar el nombre del policía en la sección Cuenta.
+                document.getElementById('nombreCuentaPolicia').textContent =
+                    personal.nombre ?? 'Policía';
 
 
                 document
@@ -639,6 +975,36 @@
 
         }
 
+        // Actualizar el indicador según el servicio policial.
+        function actualizarDisponibilidadVisual() {
+
+            const indicador = document.getElementById(
+                'indicadorDisponibilidadPolicia'
+            );
+
+            if (!indicador) {
+                return;
+            }
+
+            indicador.classList.remove(
+                'disponible',
+                'en-servicio'
+            );
+
+            if (idServicioActual !== null) {
+
+                indicador.textContent = 'En servicio';
+
+                indicador.classList.add('en-servicio');
+
+            } else {
+
+                indicador.textContent = 'Disponible';
+
+                indicador.classList.add('disponible');
+            }
+        }
+
         async function cargarServicioActual() {
 
             try {
@@ -659,10 +1025,15 @@
                     await respuesta.json();
 
 
-                if (
-                    !respuesta.ok ||
-                    !datos.servicio
-                ) {
+                if (!respuesta.ok) {
+                    return;
+                }
+
+                if (!datos.servicio) {
+
+                    idServicioActual = null;
+
+                    actualizarDisponibilidadVisual();
 
                     document
                         .getElementById(
@@ -682,6 +1053,7 @@
                 idServicioActual =
                     servicio.id_alerta;
 
+                actualizarDisponibilidadVisual();
 
                 document
                     .getElementById(
@@ -877,6 +1249,34 @@
 
                         }
                     );
+
+                // Mostrar cuántas ofertas tiene pendientes este policía.
+                const contador = document.getElementById(
+                    'contadorAlertasPolicia'
+                );
+
+                if (contador) {
+
+                    contador.textContent = disponibles.length;
+
+                    contador.classList.toggle(
+                        'oculto',
+                        disponibles.length === 0
+                    );
+
+                }
+
+                // Mostrar el aviso si el policía tiene ofertas pendientes.
+                const avisoOferta = document.getElementById(
+                    'avisoOfertaPolicia'
+                );
+
+                if (avisoOferta) {
+                    avisoOferta.classList.toggle(
+                        'oculto',
+                        disponibles.length === 0
+                    );
+                }
 
                 /*
                   Si el policía tenía una alerta seleccionada pero ya no aparece entre sus ofertas,
@@ -1365,12 +1765,24 @@
             idServicioActual =
                 idAlertaSeleccionada;
 
+            actualizarDisponibilidadVisual();
+
             modoMapaPolicia =
                 'SERVICIO';
 
             mostrarRutaCompletaUnaVez = true;
             seguirPoliciaEnMapa = true;
 
+            // Ir automáticamente a Inicio cuando el policía acepta la alerta.
+            const botonInicioPolicia = document.querySelector(
+                '#navPolicia button'
+            );
+
+            if (botonInicioPolicia) {
+                navegarPolicia('inicio', botonInicioPolicia);
+            }
+
+            // Cargar el servicio aceptado y su ubicación.
             await cargarServicioActual();
 
             await cargarAlertas();
@@ -2308,7 +2720,7 @@
 
                 idServicioActual =
                     null;
-
+                actualizarDisponibilidadVisual();
 
                 idAlertaSeleccionada =
                     null;
