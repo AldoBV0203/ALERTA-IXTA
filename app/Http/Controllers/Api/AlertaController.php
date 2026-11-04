@@ -85,6 +85,30 @@ class AlertaController extends Controller
             $usuario
         ) {
 
+            // Bloquear temporalmente el registro del ciudadano.
+            // Esto evita que dos solicitudes simultaneas creen dos alertas.
+            $usuario->newQuery()
+                ->whereKey($usuario->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            // Buscar si el ciudadano ya tiene una alerta activa.
+            $alertaActiva = Alerta::where(
+                'id_usuario',
+                $usuario->id
+            )
+                ->whereIn('estado', [
+                    'NUEVA',
+                    'EN_CAMINO',
+                    'EN_SITIO'
+                ])
+                ->exists();
+
+            // No crear otra alerta mientras exista una activa.
+            if ($alertaActiva) {
+                return null;
+            }
+
             /*
              Folio temporal único.
              Después de guardar conocemos el ID y generamos el folio definitivo.
@@ -146,6 +170,12 @@ class AlertaController extends Controller
             return $alerta;
         });
 
+        // Avisar al ciudadano si ya tiene una alerta activa.
+        if ($alerta === null) {
+            return response()->json([
+                'message' => 'Ya tienes una alerta activa. No puedes generar otra hasta que la anterior termine o sea cancelada.'
+            ], 409);
+        }
 
         return response()->json([
             'message' => 'Alerta enviada correctamente.',
