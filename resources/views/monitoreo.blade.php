@@ -2852,14 +2852,33 @@
             </div>
             `;
 
+            // Mostrar ubicación y ruta solamente si la alerta sigue activa.
+            if (
+                alerta.estado === 'NUEVA' ||
+                alerta.estado === 'EN_CAMINO' ||
+                alerta.estado === 'EN_SITIO'
+            ) {
+                mostrarUbicacionAlerta(alerta);
+                mostrarRutaAlertaPolicia(alerta);
+            } else {
 
-            mostrarUbicacionAlerta(
-                alerta
-            );
+                // Evitar que una solicitud anterior vuelva a dibujar la ruta.
+                solicitudRutaMonitoreo++;
 
-            mostrarRutaAlertaPolicia(
-                alerta
-            );
+                // Eliminar la ruta cuando la alerta termina o se cancela.
+                if (rutaAlertaPolicia) {
+                    mapaMonitoreo.removeLayer(rutaAlertaPolicia);
+                    rutaAlertaPolicia = null;
+                }
+
+                // Eliminar el marcador del ciudadano de la alerta seleccionada.
+                if (marcadorAlerta) {
+                    mapaMonitoreo.removeLayer(marcadorAlerta);
+                    marcadorAlerta = null;
+                }
+
+                ajustarVistaRuta = false;
+            }
 
             if (
                 alerta.policia

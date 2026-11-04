@@ -10,6 +10,8 @@ use App\Models\UbicacionAlerta;
 use App\Models\SeguimientoAlerta;
 use Illuminate\Support\Facades\DB;
 use App\Models\Auditoria;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
 
 class MonitoreoController extends Controller
 {
@@ -1029,7 +1031,8 @@ class MonitoreoController extends Controller
  */
     private function obtenerPoliciaMasCercano(
         Alerta $alerta,
-        array $excluirIds = []
+        array $excluirIds = [],
+        array $tiemposPorPolicia = []
     ): ?Operador {
 
         $ultimaUbicacion =
@@ -1118,6 +1121,34 @@ class MonitoreoController extends Controller
                 }
             );
 
+        // Preparar la lista de policías disponibles.
+        $policias = $policias->values();
+
+        // Utilizar los tiempos de recorrido previamente calculados.
+        if (!empty($tiemposPorPolicia)) {
+
+            $policiaMasRapido = $policias
+                ->filter(function ($policia) use ($tiemposPorPolicia) {
+
+                    $id = (int) $policia->id_operador;
+
+                    return isset($tiemposPorPolicia[$id])
+                        && is_numeric($tiemposPorPolicia[$id]);
+                })
+                ->sortBy(function ($policia) use ($tiemposPorPolicia) {
+
+                    $id = (int) $policia->id_operador;
+
+                    return (float) $tiemposPorPolicia[$id];
+                })
+                ->first();
+
+            if ($policiaMasRapido !== null) {
+                return $policiaMasRapido;
+            }
+        }
+
+        // Si no hay tiempos de ruta, utilizar la distancia en línea recta.
 
         $policiaMasCercano =
             null;
@@ -1169,19 +1200,193 @@ class MonitoreoController extends Controller
  * Obtener al policía que tiene
  * actualmente la oferta de la alerta.
  */
+    // Consultar los tiempos de llegada sin bloquear una alerta en MySQL.
+    private function consultarTiemposRutaPolicias(Alerta $alerta): array
+    {
+        if ($alerta->estado !== 'NUEVA') {
+            return [];
+        }
+
+        // Evitar consultar OSRM mientras exista una oferta vigente.
+        $ultimaOferta = SeguimientoAlerta::where(
+            'id_alerta',
+            $alerta->id_alerta
+        )
+            ->where('accion', 'OFERTA_ALERTA')
+            ->orderByDesc('id')
+            ->first();
+
+        if ($ultimaOferta) {
+            $vence = \Carbon\Carbon::parse(
+                $ultimaOferta->fecha_hora
+            )->addSeconds(40);
+
+            if (now()->lt($vence)) {
+                $rechazada = SeguimientoAlerta::where(
+                    'id_alerta',
+                    $alerta->id_alerta
+                )
+                    ->where('accion', 'OFERTA_RECHAZADA')
+                    ->where('id', '>', $ultimaOferta->id)
+                    ->exists();
+
+                $disponible = Operador::where(
+                    'id_operador',
+                    $ultimaOferta->id_operador
+                )
+                    ->where('rol', 'POLICIA')
+                    ->where('activo', true)
+                    ->where('disponible', true)
+                    ->exists();
+
+                if (!$rechazada && $disponible) {
+                    return [];
+                }
+            }
+        }
+
+        // Obtener la ubicación más reciente del ciudadano.
+        $ubicacion = UbicacionAlerta::where(
+            'id_alerta',
+            $alerta->id_alerta
+        )
+            ->orderByDesc('id')
+            ->first();
+
+        $latitud = (float) (
+            $ubicacion?->latitud ?? $alerta->latitud
+        );
+
+        $longitud = (float) (
+            $ubicacion?->longitud ?? $alerta->longitud
+        );
+
+        // Considerar únicamente policías disponibles con GPS reciente.
+        $limite = now()->subSeconds(30);
+
+        $policias = Operador::where('rol', 'POLICIA')
+            ->where('activo', true)
+            ->where('disponible', true)
+            ->whereNotNull('latitud_actual')
+            ->whereNotNull('longitud_actual')
+            ->whereNotNull('ubicacion_actualizada_at')
+            ->get()
+            ->filter(function ($policia) use ($limite) {
+                return $policia->ubicacion_actualizada_at
+                    ->greaterThanOrEqualTo($limite);
+            })
+            ->values();
+
+        // Con un solo policía no es necesario comparar rutas.
+        if ($policias->count() < 2) {
+            return [];
+        }
+
+        // OSRM recibe las coordenadas en orden longitud, latitud.
+        $puntos = [];
+
+        foreach ($policias as $policia) {
+            $puntos[] =
+                (float) $policia->longitud_actual . ',' .
+                (float) $policia->latitud_actual;
+        }
+
+        $puntos[] = $longitud . ',' . $latitud;
+
+        $origenes = implode(
+            ';',
+            range(0, $policias->count() - 1)
+        );
+
+        $destino = $policias->count();
+
+        // Reutilizar brevemente resultados de coordenadas idénticas.
+        $claveCache = 'osrm_alerta_' .
+            $alerta->id_alerta . '_' .
+            md5(implode(';', $puntos));
+
+        try {
+            return Cache::remember(
+                $claveCache,
+                15,
+                function () use (
+                    $puntos,
+                    $origenes,
+                    $destino,
+                    $policias
+                ) {
+                    $respuesta = Http::withOptions([
+                        'curl' => [
+                            CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4
+                        ]
+                    ])
+                        ->connectTimeout(4)
+                        ->timeout(7)
+                        ->get(
+                            'https://router.project-osrm.org/table/v1/driving/' .
+                                implode(';', $puntos),
+                            [
+                                'sources' => $origenes,
+                                'destinations' => $destino,
+                                'annotations' => 'duration'
+                            ]
+                        );
+
+                    if (
+                        !$respuesta->successful() ||
+                        $respuesta->json('code') !== 'Ok'
+                    ) {
+                        return [];
+                    }
+
+                    $duraciones = $respuesta->json('durations', []);
+                    $tiempos = [];
+
+                    foreach ($policias as $indice => $policia) {
+                        $segundos = $duraciones[$indice][0] ?? null;
+
+                        if (is_numeric($segundos)) {
+                            $tiempos[(int) $policia->id_operador] =
+                                (float) $segundos;
+                        }
+                    }
+
+                    return $tiempos;
+                }
+            );
+        } catch (\Throwable $error) {
+            // Recordar el fallo para evitar consultas repetidas inmediatamente.
+            Cache::put($claveCache, [], now()->addSeconds(15));
+
+            // Registrar el error sin detener la asignación policial.
+            \Illuminate\Support\Facades\Log::warning(
+                'Error al consultar tiempos de recorrido OSRM.',
+                [
+                    'id_alerta' => $alerta->id_alerta,
+                    'error' => $error->getMessage()
+                ]
+            );
+
+            // Utilizar temporalmente la distancia en línea recta.
+            return [];
+        }
+    }
+
+
     private function obtenerPoliciaEnOferta(
         Alerta $alerta
     ): ?Operador {
 
-        return DB::transaction(
-            function () use ($alerta) {
+        // Calcular los tiempos antes de iniciar la transacción.
+        $tiemposPorPolicia = $this->consultarTiemposRutaPolicias(
+            $alerta
+        );
 
-                /*
-             * Bloquear brevemente la alerta
-             * para evitar que dos policías
-             * reciban una nueva oferta
-             * al mismo tiempo.
-             */
+        return DB::transaction(
+            function () use ($alerta, $tiemposPorPolicia) {
+
+                // Bloquear brevemente la alerta para evitar que dos policías reciban una nueva oferta al mismo tiempo.
+
                 $alertaBloqueada =
                     Alerta::where(
                         'id_alerta',
@@ -1201,9 +1406,7 @@ class MonitoreoController extends Controller
                 }
 
 
-                /*
-             * Buscar la oferta más reciente.
-             */
+                // Buscar la oferta más reciente.
                 $ultimaOferta =
                     SeguimientoAlerta::where(
                         'id_alerta',
@@ -1270,9 +1473,7 @@ class MonitoreoController extends Controller
                             ->first();
 
 
-                        /*
-         * La oferta todavía está vigente.
-         */
+                        // La oferta todavía está vigente.
                         if (
                             now()->lt($vence) &&
                             $policiaOferta
@@ -1282,9 +1483,7 @@ class MonitoreoController extends Controller
                         }
 
 
-                        /*
-         * La oferta terminó por tiempo.
-         */
+                        // La oferta terminó por tiempo.
                         $vencimientoRegistrado =
                             SeguimientoAlerta::where(
                                 'id_alerta',
@@ -1389,7 +1588,8 @@ class MonitoreoController extends Controller
                     $this
                     ->obtenerPoliciaMasCercano(
                         $alertaBloqueada,
-                        $policiasIntentados
+                        $policiasIntentados,
+                        $tiemposPorPolicia
                     );
 
 
@@ -1477,7 +1677,8 @@ class MonitoreoController extends Controller
                         $this
                         ->obtenerPoliciaMasCercano(
                             $alertaBloqueada,
-                            $policiasIntentados
+                            $policiasIntentados,
+                            $tiemposPorPolicia
                         );
 
 
