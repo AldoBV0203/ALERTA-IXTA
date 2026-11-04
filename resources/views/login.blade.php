@@ -1,88 +1,113 @@
 <!DOCTYPE html>
 <html lang="es">
 
+<style>
+    /* Botón institucional de inicio de sesión */
+    .app .boton.boton-login {
+        background-color: #691C32 !important;
+        color: white;
+    }
+
+    .app .boton.boton-login:hover {
+        background-color: #9F2241 !important;
+    }
+</style>
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>ALERTA IXTA - Inicio de sesión</title>
 
-    <link rel="stylesheet" href="{{ asset('css/alerta.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/alerta.css') }}?v=4">
 </head>
 
 <body>
 
-    <div class="contenedor">
+    <div class="contenedor contenedor-app-movil">
 
-        <div class="app">
+        <div class="app app-movil">
 
-            <img
-                src="{{ asset('images/logoIxtapaluca2025.png') }}"
-                alt="Gobierno de Ixtapaluca"
-                class="logo-ixtapaluca">
+            <header class="app-cabecera">
 
-            <div class="logo">
-                ALERTA IXTA
-            </div>
+                <img
+                    src="{{ asset('images/logoIxtapaluca2025.png') }}"
+                    alt="Gobierno de Ixtapaluca"
+                    class="app-cabecera-logo">
 
-            <div class="subtitulo">
-                Sistema Municipal de Alerta y Botón de Pánico
-            </div>
+                <div class="app-cabecera-texto">
 
-            <h2>Iniciar sesión</h2>
+                    <h1 class="app-cabecera-titulo">
+                        ALERTA IXTA
+                    </h1>
 
-            <div class="campo">
-                <label>CURP</label>
+                    <p class="app-cabecera-subtitulo">
+                        Sistema Municipal de Alerta
+                    </p>
 
-                <input
-                    type="text"
-                    id="curp"
-                    placeholder="Ingresa tu CURP"
-                    maxlength="18"
-                    autocomplete="username">
-            </div>
+                </div>
 
-            <div class="campo">
-                <label>Contraseña</label>
+                <div aria-hidden="true"></div>
 
-                <input
-                    type="password"
-                    id="password"
-                    placeholder="••••••••"
-                    autocomplete="current-password">
-            </div>
+            </header>
 
-            <button
-                type="button"
-                class="boton"
-                id="btnLogin"
-                onclick="iniciarSesion()">
-                Iniciar sesión
-            </button>
+            <main class="app-contenido">
 
-            <div
-                id="mensajeLogin"
-                style="
+                <h2>Iniciar sesión</h2>
+
+                <div class="campo">
+                    <label>CURP</label>
+
+                    <input
+                        type="text"
+                        id="curp"
+                        placeholder="Ingresa tu CURP"
+                        maxlength="18"
+                        autocomplete="username">
+                </div>
+
+                <div class="campo">
+                    <label>Contraseña</label>
+
+                    <input
+                        type="password"
+                        id="password"
+                        placeholder="••••••••"
+                        autocomplete="current-password">
+                </div>
+
+                <button
+                    type="button"
+                    class="boton boton-login"
+                    id="btnLogin"
+                    onclick="iniciarSesion()">
+                    Iniciar sesión
+                </button>
+
+                <div
+                    id="mensajeLogin"
+                    style="
                     margin-top: 15px;
                     text-align: center;
                     font-size: 14px;
                     font-weight: bold;
                 ">
-            </div>
+                </div>
 
-            <div class="aviso">
+                <div class="aviso">
 
-                ¿No tienes una cuenta?
+                    ¿No tienes una cuenta?
 
-                <a href="{{ route('registro') }}">
-                    Regístrate
-                </a>
+                    <a href="{{ route('registro') }}">
+                        Regístrate
+                    </a>
 
-            </div>
+                </div>
 
-            <div class="aviso">
-                Gobierno de Ixtapaluca 2025–2027
-            </div>
+                <div class="aviso">
+                    Gobierno de Ixtapaluca 2025–2027
+                </div>
+            </main>
 
         </div>
 
@@ -90,7 +115,6 @@
 
 
     <script>
-
         async function iniciarSesion() {
 
             const curpInput =
@@ -108,8 +132,8 @@
 
             const curp =
                 curpInput.value
-                    .trim()
-                    .toUpperCase();
+                .trim()
+                .toUpperCase();
 
             const password =
                 passwordInput.value;
@@ -136,16 +160,13 @@
             try {
 
                 const respuesta = await fetch(
-                    '/api/login',
-                    {
+                    '/api/login', {
                         method: 'POST',
 
                         headers: {
-                            'Content-Type':
-                                'application/json',
+                            'Content-Type': 'application/json',
 
-                            'Accept':
-                                'application/json'
+                            'Accept': 'application/json'
                         },
 
                         body: JSON.stringify({
@@ -214,7 +235,7 @@
         // Permitir iniciar sesión presionando Enter.
         document.addEventListener(
             'keydown',
-            function (event) {
+            function(event) {
 
                 if (event.key === 'Enter') {
                     iniciarSesion();
@@ -222,7 +243,6 @@
 
             }
         );
-
     </script>
 
 </body>

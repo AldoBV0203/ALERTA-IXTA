@@ -7,8 +7,7 @@
 
     <meta
         name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
+        content="width=device-width, initial-scale=1.0">
 
     <title>
         ALERTA IXTA - Registro
@@ -16,223 +15,238 @@
 
     <link
         rel="stylesheet"
-        href="{{ asset('css/alerta.css') }}"
-    >
+        href="{{ asset('css/alerta.css') }}?v=4">
+
+    <style>
+        .boton-registro {
+            background: #691C32;
+            color: white;
+        }
+
+        .boton-registro:hover {
+            background: #9F2241;
+        }
+    </style>
 
 </head>
 
 <body>
 
-<div class="contenedor">
+    <div class="contenedor contenedor-app-movil">
 
-    <div class="app">
+        <div class="app app-movil">
 
-        <img
-            src="{{ asset('images/logoIxtapaluca2025.png') }}"
-            alt="Gobierno de Ixtapaluca"
-            class="logo-ixtapaluca"
-        >
+            <header class="app-cabecera">
 
-        <div class="logo">
-            ALERTA IXTA
-        </div>
+                <img
+                    src="{{ asset('images/logoIxtapaluca2025.png') }}"
+                    alt="Gobierno de Ixtapaluca"
+                    class="app-cabecera-logo">
 
-        <div class="subtitulo">
-            Registro ciudadano
-        </div>
+                <div class="app-cabecera-texto">
 
-        <h2>
-            Crear cuenta
-        </h2>
+                    <h1 class="app-cabecera-titulo">
+                        ALERTA IXTA
+                    </h1>
 
+                    <p class="app-cabecera-subtitulo">
+                        Sistema Municipal de Alerta
+                    </p>
 
-        {{-- Mostrar mensaje de errores generales --}}
+                </div>
 
-        @if ($errors->any())
+                <div aria-hidden="true"></div>
 
-            <div class="mensaje-error">
+            </header>
 
-                Revisa los datos ingresados.
+            <main class="app-contenido">
 
-            </div>
+                <h2>
+                    Crear cuenta
+                </h2>
 
-        @endif
 
+                {{-- Mostrar mensaje de errores generales --}}
 
-        <form
-            method="POST"
-            action="{{ route('registro.store') }}"
-        >
+                @if ($errors->any())
 
-            @csrf
+                <div class="mensaje-error">
 
+                    Revisa los datos ingresados.
 
-            <div class="campo">
+                </div>
 
-                <label>
-                    Nombre completo
-                </label>
+                @endif
 
-                <input
-                    type="text"
-                    name="name"
-                    value="{{ old('name') }}"
-                    placeholder="Ingresa tu nombre completo"
-                    required
-                >
 
-                @error('name')
+                <form
+                    method="POST"
+                    action="{{ route('registro.store') }}">
 
-                    <small class="error">
-                        {{ $message }}
-                    </small>
+                    @csrf
 
-                @enderror
 
-            </div>
+                    <div class="campo">
 
+                        <label>
+                            Nombre completo
+                        </label>
 
-            <div class="campo">
+                        <input
+                            type="text"
+                            name="name"
+                            value="{{ old('name') }}"
+                            placeholder="Ingresa tu nombre completo"
+                            required>
 
-                <label>
-                    CURP
-                </label>
+                        @error('name')
 
-                <input
-                    type="text"
-                    name="curp"
-                    value="{{ old('curp') }}"
-                    placeholder="Ingresa tu CURP"
-                    minlength="18"
-                    maxlength="18"
-                    required
-                    style="text-transform: uppercase;"
-                >
+                        <small class="error">
+                            {{ $message }}
+                        </small>
 
-                @error('curp')
+                        @enderror
 
-                    <small class="error">
-                        {{ $message }}
-                    </small>
+                    </div>
 
-                @enderror
 
-            </div>
+                    <div class="campo">
 
+                        <label>
+                            CURP
+                        </label>
 
-            <div class="campo">
+                        <input
+                            type="text"
+                            name="curp"
+                            value="{{ old('curp') }}"
+                            placeholder="Ingresa tu CURP"
+                            minlength="18"
+                            maxlength="18"
+                            required
+                            style="text-transform: uppercase;">
 
-                <label>
-                    Teléfono
-                </label>
+                        @error('curp')
 
-                <input
-                    type="tel"
-                    name="telefono"
-                    value="{{ old('telefono') }}"
-                    placeholder="10 dígitos"
-                    maxlength="10"
-                    required
-                >
+                        <small class="error">
+                            {{ $message }}
+                        </small>
 
-                @error('telefono')
+                        @enderror
 
-                    <small class="error">
-                        {{ $message }}
-                    </small>
+                    </div>
 
-                @enderror
 
-            </div>
+                    <div class="campo">
 
+                        <label>
+                            Teléfono
+                        </label>
 
-            <div class="campo">
+                        <input
+                            type="tel"
+                            name="telefono"
+                            value="{{ old('telefono') }}"
+                            placeholder="10 dígitos"
+                            maxlength="10"
+                            required>
 
-                <label>
-                    Correo electrónico
-                </label>
+                        @error('telefono')
 
-                <input
-                    type="email"
-                    name="email"
-                    value="{{ old('email') }}"
-                    placeholder="Opcional"
-                >
+                        <small class="error">
+                            {{ $message }}
+                        </small>
 
-                @error('email')
+                        @enderror
 
-                    <small class="error">
-                        {{ $message }}
-                    </small>
+                    </div>
 
-                @enderror
 
-            </div>
+                    <div class="campo">
 
+                        <label>
+                            Correo electrónico
+                        </label>
 
-            <div class="campo">
+                        <input
+                            type="email"
+                            name="email"
+                            value="{{ old('email') }}"
+                            placeholder="Opcional">
 
-                <label>
-                    Contraseña
-                </label>
+                        @error('email')
 
-                <input
-                    type="password"
-                    name="password"
-                    placeholder="Mínimo 8 caracteres"
-                    required
-                >
+                        <small class="error">
+                            {{ $message }}
+                        </small>
 
-                @error('password')
+                        @enderror
 
-                    <small class="error">
-                        {{ $message }}
-                    </small>
+                    </div>
 
-                @enderror
 
-            </div>
+                    <div class="campo">
 
+                        <label>
+                            Contraseña
+                        </label>
 
-            <div class="campo">
+                        <input
+                            type="password"
+                            name="password"
+                            placeholder="Mínimo 8 caracteres"
+                            required>
 
-                <label>
-                    Confirmar contraseña
-                </label>
+                        @error('password')
 
-                <input
-                    type="password"
-                    name="password_confirmation"
-                    placeholder="Repite tu contraseña"
-                    required
-                >
+                        <small class="error">
+                            {{ $message }}
+                        </small>
 
-            </div>
+                        @enderror
 
+                    </div>
 
-            <button
-                type="submit"
-                class="boton"
-            >
-                Registrarme
-            </button>
 
-        </form>
+                    <div class="campo">
 
+                        <label>
+                            Confirmar contraseña
+                        </label>
 
-        <div class="aviso">
+                        <input
+                            type="password"
+                            name="password_confirmation"
+                            placeholder="Repite tu contraseña"
+                            required>
 
-            ¿Ya tienes una cuenta?
+                    </div>
 
-            <a href="{{ route('login') }}">
-                Iniciar sesión
-            </a>
+
+                    <button
+                        type="submit"
+                        class="boton boton-registro">
+                        Registrarme
+                    </button>
+
+                </form>
+
+
+                <div class="aviso">
+
+                    ¿Ya tienes una cuenta?
+
+                    <a href="{{ route('login') }}">
+                        Iniciar sesión
+                    </a>
+
+                </div>
+
+            </main>
 
         </div>
 
     </div>
-
-</div>
 
 </body>
 

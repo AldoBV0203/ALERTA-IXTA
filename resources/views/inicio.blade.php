@@ -214,6 +214,20 @@
                 box-shadow: 0 0 0 0 rgba(211, 47, 47, 0);
             }
         }
+
+        /* Pantalla independiente de la cuenta ciudadana */
+        #panelCuentaCiudadano {
+            display: none;
+        }
+
+        #pantallaContenido.modo-cuenta> :not(#panelCuentaCiudadano) {
+            display: none !important;
+        }
+
+        #pantallaContenido.modo-cuenta #panelCuentaCiudadano {
+            display: block;
+            margin-top: 0;
+        }
     </style>
 
 </head>
@@ -398,35 +412,61 @@
 
                 </div>
 
-                <button
-                    type="button"
-                    class="boton boton-cerrar-sesion"
-                    onclick="cerrarSesion()">
-                    Cerrar sesión
-                </button>
+                <section
+                    id="panelCuentaCiudadano"
+                    class="estado-alerta">
+
+                    <h2>Mi cuenta</h2>
+
+                    <p>
+                        <strong>Nombre:</strong>
+                        <span id="nombreCuentaCiudadano">
+                            Ciudadano
+                        </span>
+                    </p>
+
+                    <p>
+                        <strong>Rol:</strong>
+                        Ciudadano
+                    </p>
+
+                    <button
+                        type="button"
+                        class="boton boton-cerrar-sesion"
+                        onclick="cerrarSesion()">
+                        Cerrar sesión
+                    </button>
+
+                </section>
 
             </main>
 
             <!-- Barra de navegación inferior -->
-            <nav class="app-nav-inferior" aria-label="Navegación principal">
+            <nav
+                id="navCiudadano"
+                class="app-nav-inferior"
+                aria-label="Navegación principal">
 
                 <button
                     type="button"
                     class="activo"
-                    onclick="document.getElementById('pantallaContenido').scrollTo({top: 0, behavior: 'smooth'})">
+                    data-seccion="inicio"
+                    onclick="navegarCiudadano('inicio')">
                     Inicio
                 </button>
 
                 <button
                     type="button"
-                    onclick="document.getElementById('btnSOS').scrollIntoView({behavior: 'smooth', block: 'center'})">
+                    data-seccion="sos"
+                    onclick="navegarCiudadano('sos')">
                     SOS
                 </button>
 
                 <button
                     type="button"
-                    onclick="cargarMisAlertas()">
-                    Actualizar
+                    data-seccion="cuenta"
+                    onclick="navegarCiudadano('cuenta')">
+                    Cuenta
                 </button>
 
             </nav>
@@ -518,6 +558,70 @@
             }
         );
 
+        // Marcar la pestaña seleccionada.
+        function marcarPestanaCiudadano(seccion) {
+
+            document.querySelectorAll('#navCiudadano button')
+                .forEach(function(boton) {
+
+                    boton.classList.toggle(
+                        'activo',
+                        boton.dataset.seccion === seccion
+                    );
+
+                });
+        }
+
+
+        // Navegar entre Inicio, SOS y Cuenta.
+        function navegarCiudadano(seccion) {
+
+            const contenido = document.getElementById(
+                'pantallaContenido'
+            );
+
+            // Mostrar u ocultar la pantalla Cuenta.
+            contenido.classList.toggle(
+                'modo-cuenta',
+                seccion === 'cuenta'
+            );
+
+            // Cambiar la pestaña activa.
+            marcarPestanaCiudadano(seccion);
+
+            if (seccion === 'inicio' || seccion === 'cuenta') {
+
+                contenido.scrollTo({
+                    top: 0,
+                    behavior: 'auto'
+                });
+
+            }
+
+            if (seccion === 'sos') {
+
+                requestAnimationFrame(function() {
+
+                    document.getElementById('btnSOS')
+                        .scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center'
+                        });
+
+                });
+
+            }
+
+            // Ajustar el mapa al regresar desde Cuenta.
+            if (seccion !== 'cuenta' && mapa) {
+
+                requestAnimationFrame(function() {
+                    mapa.invalidateSize();
+                });
+
+            }
+        }
+
 
         // Crear mapa.
         function iniciarMapa() {
@@ -582,6 +686,10 @@
                         .getElementById('saludo')
                         .textContent =
                         'Hola, ' + usuario.name;
+
+                    document
+                        .getElementById('nombreCuentaCiudadano')
+                        .textContent = usuario.name;
 
                 }
 
@@ -1100,6 +1208,9 @@
             ) {
                 return;
             }
+
+            // Marcar SOS sin mover la pantalla durante la pulsación.
+            marcarPestanaCiudadano('sos');
 
             sosPresionado = true;
 
