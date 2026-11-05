@@ -278,6 +278,211 @@
         .tarjeta-historial strong {
             color: #691C32;
         }
+
+        #panelCuentaCiudadano>.boton-cerrar-sesion {
+            margin-top: 200px;
+            margin-bottom: 15px;
+        }
+
+        /* Tarjetas de contactos confirmados. */
+        .tarjeta-contacto-confianza {
+            background: white;
+            border: 1px solid #DDDDDD;
+            border-left: 4px solid #691C32;
+            border-radius: 10px;
+            padding: 14px;
+            margin-top: 12px;
+        }
+
+        .tarjeta-contacto-confianza strong {
+            color: #691C32;
+            font-size: 14px;
+        }
+
+        .tarjeta-contacto-confianza p {
+            color: #555555;
+            font-size: 12px;
+            margin: 8px 0 0;
+        }
+
+        /* Cuadros del círculo de confianza*/
+        #listaContactosConfianza{
+            background: #FFFFFF;
+            border: 1px solid #DDDDDD;
+            border-radius: 10px;
+            padding: 10px;
+            min-height: 75px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+
+        /* Contactos dentro del cuadro */
+        #listaContactosConfianza .tarjeta-contacto-confianza {
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            padding: 10px 5px;
+            margin: 0;
+        }
+
+        /* Separación entre contactos */
+        #listaContactosConfianza .tarjeta-contacto-confianza+.tarjeta-contacto-confianza {
+            border-top: 1px solid #EEEEEE;
+        }
+
+
+        .solicitud-confianza+.solicitud-confianza {
+            border-top: 1px solid #EEEEEE;
+        }
+
+        .solicitud-confianza strong {
+            display: block;
+            color: #691C32;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .botones-solicitud-confianza {
+            display: flex;
+            gap: 10px;
+        }
+
+        .botones-solicitud-confianza button {
+            flex: 1;
+            border: none;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .boton-aceptar-confianza {
+            background: #691C32;
+            color: white;
+        }
+
+        .boton-rechazar-confianza {
+            background: #EEEEEE;
+            color: #333333;
+        }
+
+        .botones-solicitud-confianza button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Generación de códigos de confianza */
+        .panel-codigo-confianza {
+            background: #FFFFFF;
+            border: 1px solid #DDDDDD;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .panel-codigo-confianza h3 {
+            margin-top: 0;
+        }
+
+        .panel-codigo-confianza p {
+            font-size: 13px;
+            color: #555555;
+            line-height: 1.5;
+        }
+
+        .app .boton.boton-codigo-confianza {
+            background-color: #691C32 !important;
+            color: #FFFFFF;
+        }
+
+        .app .boton.boton-codigo-confianza:hover {
+            background-color: #9F2241 !important;
+        }
+
+        #resultadoCodigoConfianza {
+            margin-top: 15px;
+            padding: 12px;
+            background: #F8E8EC;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        #valorCodigoConfianza {
+            color: #691C32;
+            font-size: 18px;
+            letter-spacing: 1px;
+            overflow-wrap: anywhere;
+        }
+
+        #mensajeCodigoConfianza {
+            margin-bottom: 0;
+        }
+
+        /* Formulario para agregar contactos de confianza */
+        .panel-introducir-codigo {
+            background: #FFFFFF;
+            border: 1px solid #DDDDDD;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .panel-introducir-codigo h3 {
+            margin-top: 0;
+        }
+
+        .panel-introducir-codigo p {
+            color: #555555;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        #codigoContactoConfianza {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 12px;
+            border: 1px solid #CCCCCC;
+            border-radius: 8px;
+            font-size: 14px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .app .boton.boton-enviar-confianza {
+            background-color: #691C32 !important;
+            color: #FFFFFF;
+        }
+
+        .app .boton.boton-enviar-confianza:hover {
+            background-color: #9F2241 !important;
+        }
+
+        #mensajeSolicitudConfianza {
+            margin-bottom: 0;
+        }
+
+        /* Botón para eliminar contactos de confianza */
+        .boton-eliminar-confianza {
+            display: block;
+            margin-top: 12px;
+            padding: 8px 12px;
+            background: transparent;
+            border: 1px solid #9F2241;
+            border-radius: 8px;
+            color: #691C32;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .boton-eliminar-confianza:hover {
+            background: #F8E8EC;
+        }
+
+        .boton-eliminar-confianza:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
     </style>
 
 </head>
@@ -497,10 +702,87 @@
 
                     <button
                         type="button"
-                        class="boton boton-cerrar-sesion"
-                        onclick="cerrarSesion()">
-                        Cerrar sesión
+                        class="acceso-historial-ciudadano"
+                        onclick="abrirCirculoCiudadano()">
+
+                        <span>
+                            <strong>Mi círculo de confianza</strong>
+                            <small>Administra hasta 10 contactos de confianza</small>
+                        </span>
+
+                        <span aria-hidden="true">›</span>
+
                     </button>
+
+                    <div class="panel-codigo-confianza">
+
+                        <h3>Mi código de invitación</h3>
+
+                        <p>
+                            Comparte este código con otro ciudadano
+                            para vincularse y recibir avisos
+                            de emergencia entre ambos.
+                        </p>
+
+                        <button
+                            type="button"
+                            id="btnGenerarCodigoConfianza"
+                            class="boton boton-codigo-confianza"
+                            onclick="generarCodigoConfianza()">
+                            Generar código
+                        </button>
+
+                        <div
+                            id="resultadoCodigoConfianza"
+                            style="display: none;">
+
+                            <strong id="valorCodigoConfianza"></strong>
+
+                            <p>
+                                Válido durante 15 minutos.
+                            </p>
+
+                        </div>
+
+                        <p
+                            id="mensajeCodigoConfianza"
+                            role="status">
+                        </p>
+
+                    </div>
+
+                    <div class="panel-introducir-codigo">
+
+                        <h3>Agregar contacto</h3>
+
+                        <p>
+                            Introduce el código de invitación
+                            de otro ciudadano registrado.
+                        </p>
+
+                        <input
+                            type="text"
+                            id="codigoContactoConfianza"
+                            placeholder="IXTA-XXXXXXXXXXXX"
+                            maxlength="17"
+                            autocomplete="off">
+
+                        <button
+                            type="button"
+                            id="btnEnviarSolicitudConfianza"
+                            class="boton boton-enviar-confianza"
+                            onclick="enviarSolicitudConfianza()">
+                            Vincular contacto
+                        </button>
+
+                        <p
+                            id="mensajeSolicitudConfianza"
+                            role="status">
+                        </p>
+
+                    </div>
+
+
 
                     <div
                         id="vistaHistorialCiudadano"
@@ -520,6 +802,33 @@
                         </div>
 
                     </div>
+
+
+
+                    <div
+                        id="vistaCirculoCiudadano"
+                        style="display: none;">
+
+                        <button
+                            type="button"
+                            class="boton boton-secundario"
+                            onclick="volverCuentaCiudadano()">
+                            ← Volver a mi cuenta
+                        </button>
+
+                        <h2>Mi círculo de confianza</h2>
+
+
+                        <div id="listaContactosConfianza"></div>
+
+                    </div>
+
+                    <button
+                        type="button"
+                        class="boton boton-cerrar-sesion"
+                        onclick="cerrarSesion()">
+                        Cerrar sesión
+                    </button>
 
                 </section>
 
@@ -807,6 +1116,373 @@
             }
         }
 
+        // Enviar una solicitud de confianza mediante un código.
+        async function enviarSolicitudConfianza() {
+
+            const campo = document.getElementById(
+                'codigoContactoConfianza'
+            );
+
+            const boton = document.getElementById(
+                'btnEnviarSolicitudConfianza'
+            );
+
+            const mensaje = document.getElementById(
+                'mensajeSolicitudConfianza'
+            );
+
+            const codigo = campo.value.trim().toUpperCase();
+
+            mensaje.textContent = '';
+
+            // Comprobar que el ciudadano introdujo un código.
+            if (!codigo) {
+
+                mensaje.style.color = '#9F2241';
+
+                mensaje.textContent =
+                    'Introduce un código de invitación.';
+
+                return;
+            }
+
+            boton.disabled = true;
+            boton.textContent = 'Vinculando contacto...';
+
+            try {
+
+                const respuesta = await fetch(
+                    API + '/circulo-confianza/vincular', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer ' + token,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            codigo: codigo
+                        })
+                    }
+                );
+
+                const datos = await respuesta.json();
+
+                if (!respuesta.ok) {
+
+                    mensaje.style.color = '#9F2241';
+
+                    mensaje.textContent =
+                        datos.message ??
+                        'No fue posible enviar la solicitud.';
+
+                    return;
+                }
+
+                // Confirmar que la solicitud quedó pendiente.
+                mensaje.style.color = '#235B4E';
+
+                mensaje.textContent =
+                    'Contacto vinculado correctamente.';
+
+                campo.value = '';
+
+                // Actualizar los contactos después de vincular.
+                await cargarContactosConfianza();
+
+            } catch (error) {
+
+                console.error(
+                    'Error enviando solicitud de confianza:',
+                    error
+                );
+
+                mensaje.style.color = '#9F2241';
+
+                mensaje.textContent =
+                    'No fue posible conectar con el servidor.';
+
+            } finally {
+
+                boton.disabled = false;
+                boton.textContent = 'Vincular contacto';
+
+            }
+        }
+
+        // Generar un código temporal de confianza.
+        async function generarCodigoConfianza() {
+
+            const boton = document.getElementById(
+                'btnGenerarCodigoConfianza'
+            );
+
+            const resultado = document.getElementById(
+                'resultadoCodigoConfianza'
+            );
+
+            const valor = document.getElementById(
+                'valorCodigoConfianza'
+            );
+
+            const mensaje = document.getElementById(
+                'mensajeCodigoConfianza'
+            );
+
+            boton.disabled = true;
+            boton.textContent = 'Generando código...';
+
+            resultado.style.display = 'none';
+            valor.textContent = '';
+            mensaje.textContent = '';
+
+            try {
+
+                const respuesta = await fetch(
+                    API + '/circulo-confianza/codigo', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer ' + token,
+                            'Accept': 'application/json'
+                        }
+                    }
+                );
+
+                const datos = await respuesta.json();
+
+                if (!respuesta.ok) {
+
+                    mensaje.style.color = '#9F2241';
+
+                    mensaje.textContent =
+                        datos.message ??
+                        'No fue posible generar el código.';
+
+                    return;
+                }
+
+                // Mostrar el código devuelto por Laravel.
+                valor.textContent = datos.codigo;
+
+                resultado.style.display = 'block';
+
+            } catch (error) {
+
+                console.error(
+                    'Error generando código de confianza:',
+                    error
+                );
+
+                mensaje.style.color = '#9F2241';
+
+                mensaje.textContent =
+                    'No fue posible conectar con el servidor.';
+
+            } finally {
+
+                boton.disabled = false;
+                boton.textContent = 'Generar otro código';
+
+            }
+        }
+
+        // Eliminar una vinculación de confianza.
+        async function eliminarContactoConfianza(id, nombre, boton) {
+
+            const confirmar = window.confirm(
+                '¿Deseas eliminar a ' + nombre +
+                ' de tu círculo de confianza? ' +
+                'La vinculación se eliminará para ambos ciudadanos.'
+            );
+
+            if (!confirmar) {
+                return;
+            }
+
+            boton.disabled = true;
+            boton.textContent = 'Eliminando...';
+
+            try {
+
+                const respuesta = await fetch(
+                    API + '/circulo-confianza/contactos/' + id, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': 'Bearer ' + token,
+                            'Accept': 'application/json'
+                        }
+                    }
+                );
+
+                const datos = await respuesta.json();
+
+                if (!respuesta.ok) {
+
+                    alert(
+                        datos.message ??
+                        'No fue posible eliminar el contacto.'
+                    );
+
+                    return;
+                }
+
+                // Actualizar la lista después de eliminar.
+                await cargarContactosConfianza();
+
+            } catch (error) {
+
+                console.error(
+                    'Error eliminando contacto:',
+                    error
+                );
+
+                alert('No fue posible conectar con el servidor.');
+
+            } finally {
+
+                boton.disabled = false;
+                boton.textContent = 'Eliminar contacto';
+
+            }
+        }
+
+        // Consultar los contactos confirmados del ciudadano.
+        async function cargarContactosConfianza() {
+
+            const lista = document.getElementById(
+                'listaContactosConfianza'
+            );
+
+            lista.textContent = 'Cargando contactos...';
+
+            try {
+
+                const respuesta = await fetch(
+                    API + '/circulo-confianza/contactos', {
+                        headers: {
+                            'Authorization': 'Bearer ' + token,
+                            'Accept': 'application/json'
+                        }
+                    }
+                );
+
+                if (!respuesta.ok) {
+
+                    lista.textContent =
+                        'No fue posible consultar tus contactos.';
+
+                    return;
+                }
+
+                const datos = await respuesta.json();
+
+                const contactos = datos.contactos ?? [];
+
+                if (!Array.isArray(contactos)) {
+
+                    lista.textContent =
+                        'No fue posible mostrar tus contactos.';
+
+                    return;
+                }
+
+                // Limpiar la lista anterior.
+                lista.replaceChildren();
+
+                if (contactos.length === 0) {
+                    return;
+                }
+
+                // Crear una tarjeta por cada contacto.
+                contactos.forEach(function(contacto) {
+
+                    const tarjeta = document.createElement('div');
+
+                    tarjeta.className = 'tarjeta-contacto-confianza';
+
+                    const nombre = document.createElement('strong');
+
+                    nombre.textContent =
+                        contacto.nombre ?? 'Ciudadano';
+
+                    const estado = document.createElement('p');
+
+                    estado.textContent = 'Contacto confirmado';
+
+                    tarjeta.appendChild(nombre);
+
+                    tarjeta.appendChild(estado);
+
+                    // Crear el botón para eliminar el contacto.
+                    const botonEliminar = document.createElement('button');
+
+                    botonEliminar.type = 'button';
+
+                    botonEliminar.className = 'boton-eliminar-confianza';
+
+                    botonEliminar.textContent = 'Eliminar contacto';
+
+                    botonEliminar.addEventListener('click', function() {
+
+                        eliminarContactoConfianza(
+                            contacto.id_vinculo,
+                            contacto.nombre,
+                            botonEliminar
+                        );
+
+                    });
+
+                    tarjeta.appendChild(botonEliminar);
+
+                    lista.appendChild(tarjeta);
+
+                });
+
+            } catch (error) {
+
+                console.error(
+                    'Error consultando contactos:',
+                    error
+                );
+
+                lista.textContent =
+                    'No fue posible conectar con el servidor.';
+
+            }
+        }
+
+        // Abrir Mi círculo de confianza.
+        function abrirCirculoCiudadano() {
+
+            const cuenta = document.getElementById(
+                'panelCuentaCiudadano'
+            );
+
+            const circulo = document.getElementById(
+                'vistaCirculoCiudadano'
+            );
+
+            // Ocultar los demás elementos de Cuenta.
+            Array.from(cuenta.children).forEach(function(elemento) {
+
+                if (elemento !== circulo) {
+                    elemento.style.display = 'none';
+                }
+
+            });
+
+            // Mostrar únicamente Mi círculo de confianza.
+            circulo.style.display = 'block';
+
+            // Mostrar los contactos vinculados desde MySQL.
+            cargarContactosConfianza();
+
+            document.getElementById('pantallaContenido')
+                .scrollTo({
+                    top: 0,
+                    behavior: 'auto'
+                });
+        }
+
         // Abrir el historial dentro de Cuenta.
         function abrirHistorialCiudadano() {
 
@@ -837,7 +1513,7 @@
         }
 
 
-        // Regresar del historial a Mi cuenta.
+        // Regresar a Mi cuenta desde Historial o Mi círculo.
         function volverCuentaCiudadano() {
 
             const cuenta = document.getElementById(
@@ -848,14 +1524,31 @@
                 'vistaHistorialCiudadano'
             );
 
-            historial.style.display = 'none';
+            const circulo = document.getElementById(
+                'vistaCirculoCiudadano'
+            );
 
+            // Ocultar las dos pantallas internas.
+            historial.style.display = 'none';
+            circulo.style.display = 'none';
+
+            // Volver a mostrar los elementos principales de Cuenta.
             Array.from(cuenta.children).forEach(function(elemento) {
-                if (elemento !== historial) {
+
+                if (
+                    elemento !== historial &&
+                    elemento !== circulo
+                ) {
                     elemento.style.removeProperty('display');
                 }
+
             });
 
+            document.getElementById('pantallaContenido')
+                .scrollTo({
+                    top: 0,
+                    behavior: 'auto'
+                });
         }
 
         // Navegar entre Inicio, SOS y Cuenta.

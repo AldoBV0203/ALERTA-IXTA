@@ -120,3 +120,57 @@ Route::middleware('auth:sanctum')->group(function () {
         [PoliciaController::class, 'servicioActual']
     );
 });
+
+
+// Generar códigos de invitación para el círculo de confianza.
+Route::post(
+    '/circulo-confianza/codigo',
+    [
+        \App\Http\Controllers\Api\CirculoConfianzaController::class,
+        'generarCodigo'
+    ]
+)->middleware([
+    'auth:sanctum',
+    'throttle:5,1'
+]);
+
+// Enviar una solicitud de contacto mediante un código.
+Route::post(
+    '/circulo-confianza/vincular',
+    [
+        \App\Http\Controllers\Api\CirculoConfianzaController::class,
+        'vincularContacto'
+    ]
+)->middleware([
+    'auth:sanctum',
+    'throttle:5,1'
+]);
+
+
+
+
+// Consultar los contactos de confianza confirmados.
+Route::get(
+    '/circulo-confianza/contactos',
+    [
+        \App\Http\Controllers\Api\CirculoConfianzaController::class,
+        'misContactos'
+    ]
+)->middleware([
+    'auth:sanctum',
+    'throttle:30,1'
+]);
+
+
+
+// Eliminar un contacto de confianza confirmado.
+Route::delete(
+    '/circulo-confianza/contactos/{id}',
+    [
+        \App\Http\Controllers\Api\CirculoConfianzaController::class,
+        'eliminarContacto'
+    ]
+)->middleware([
+    'auth:sanctum',
+    'throttle:10,1'
+])->whereNumber('id');
