@@ -665,6 +665,8 @@
                         Cancelar alerta
                     </button>
 
+                    <p id="estadoSolicitudCancelacion" class="info"></p>
+
                 </div>
 
                 <section
@@ -896,6 +898,7 @@
         let precisionActual = null;
 
         let idAlertaActual = null;
+        let enviandoSolicitudCancelacion = false;
 
         let intervaloEstado = null;
 
@@ -2408,161 +2411,80 @@
 
         async function cancelarAlerta() {
 
-            if (!idAlertaActual) {
+            if (!idAlertaActual || enviandoSolicitudCancelacion) {
                 return;
             }
 
+            const idAlertaSolicitud = idAlertaActual;
 
-            const confirmar =
-                window.confirm(
-                    '¿Confirmas que deseas cancelar esta alerta?'
-                );
+            const motivoEscrito = window.prompt(
+                'Escribe el motivo de la solicitud. La alerta seguirá activa mientras el operador la revisa.'
+            );
 
-
-            if (!confirmar) {
+            if (motivoEscrito === null) {
                 return;
             }
 
+            const motivo = motivoEscrito.trim();
+            const mensaje = document.getElementById('mensajeAlerta');
+            const boton = document.getElementById('btnCancelarAlerta');
 
-            const mensaje =
-                document.getElementById(
-                    'mensajeAlerta'
-                );
+            if (motivo.length === 0 || motivo.length > 1000) {
+                mensaje.style.color = '#9F2241';
+                mensaje.textContent =
+                    'Escribe un motivo de entre 1 y 1000 caracteres.';
+                return;
+            }
 
-
-            const boton =
-                document.getElementById(
-                    'btnCancelarAlerta'
-                );
-
-
+            enviandoSolicitudCancelacion = true;
             boton.disabled = true;
-
-            boton.textContent =
-                'Cancelando...';
-
+            boton.textContent = 'Enviando solicitud...';
 
             try {
 
-                const respuesta =
-                    await fetch(
-                        API +
-                        '/mis-alertas/' +
-                        idAlertaActual +
-                        '/cancelar', {
+                const respuesta = await fetch(
+                    API + '/mis-alertas/' + idAlertaSolicitud + '/cancelar', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer ' + token,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            motivo: motivo
+                        })
+                    }
+                );
 
-                            method: 'POST',
-
-                            headers: {
-
-                                'Authorization': 'Bearer ' + token,
-
-                                'Accept': 'application/json'
-
-                            }
-
-                        }
-                    );
-
-
-                const datos =
-                    await respuesta.json();
-
+                const datos = await respuesta.json();
 
                 if (!respuesta.ok) {
-
-                    mensaje.style.color =
-                        '#9F2241';
-
+                    mensaje.style.color = '#9F2241';
                     mensaje.textContent =
-                        datos.message ??
-                        'No fue posible cancelar la alerta.';
-
-
-                    boton.disabled =
-                        false;
-
-                    boton.textContent =
-                        'Cancelar alerta';
-
+                        datos.message ?? 'No fue posible enviar la solicitud.';
                     return;
                 }
 
-
-                mensaje.style.color =
-                    '#235B4E';
-
+                mensaje.style.color = '#235B4E';
                 mensaje.textContent =
-                    'Alerta cancelada correctamente.';
-
-
-                document
-                    .getElementById(
-                        'estado'
-                    )
-                    .textContent =
-                    'CANCELADA';
-
-
-                boton.style.display =
-                    'none';
-
-
-                /*
-                 * Ya no necesitamos seguir
-                 * consultando ni enviando ubicación.
-                 */
-                if (intervaloEstado) {
-
-                    clearInterval(
-                        intervaloEstado
-                    );
-
-                    intervaloEstado =
-                        null;
-                }
-
-
-                detenerSeguimientoUbicacionCiudadano();
-
-
-                /*
-                 * Evitar que se sigan enviando
-                 * coordenadas a la alerta cancelada.
-                 */
-                idAlertaActual =
-                    null;
-
-
-                /*
-                 * Si había un policía o ruta
-                 * mostrados, eliminarlos.
-                 */
-                actualizarPoliciaEnMapa({
-                    policia: null
-                });
-
+                    datos.message ?? 'Solicitud registrada. La atención continúa.';
 
             } catch (error) {
 
                 console.error(
-                    'Error cancelando alerta:',
+                    'Error enviando solicitud de cancelación:',
                     error
                 );
 
-
-                mensaje.style.color =
-                    '#9F2241';
-
+                mensaje.style.color = '#9F2241';
                 mensaje.textContent =
                     'No fue posible conectar con el servidor.';
 
+            } finally {
 
-                boton.disabled =
-                    false;
+                enviandoSolicitudCancelacion = false;
+                await consultarEstadoAlerta();
 
-                boton.textContent =
-                    'Cancelar alerta';
             }
         }
 
@@ -2728,33 +2650,48 @@
                 alerta.estado;
 
             const btnCancelarAlerta =
-                document.getElementById(
-                    'btnCancelarAlerta'
-                );
+                document.getElementById('btnCancelarAlerta');
 
+            const estadoSolicitud =
+                document.getElementById('estadoSolicitudCancelacion');
 
-            if (
-                alerta.estado ===
-                'NUEVA'
-            ) {
+            const alertaActiva = ['NUEVA', 'EN_CAMINO', 'EN_SITIO'].includes(alerta.estado);
 
-                btnCancelarAlerta
-                    .style.display =
-                    'block';
+            const solicitud = alerta.solicitud_cancelacion;
 
-                btnCancelarAlerta.disabled =
-                    false;
+            const solicitudPendiente = Boolean(
+                solicitud && ['PENDIENTE', 'CODIGO_GENERADO'].includes(solicitud.estado)
+            );
 
-                btnCancelarAlerta.textContent =
-                    'Cancelar alerta';
+            btnCancelarAlerta.style.display =
+                alertaActiva ? 'block' : 'none';
 
-            } else {
+            btnCancelarAlerta.disabled =
+                enviandoSolicitudCancelacion || solicitudPendiente;
 
-                btnCancelarAlerta
-                    .style.display =
-                    'none';
+            btnCancelarAlerta.textContent = enviandoSolicitudCancelacion ?
+                'Enviando solicitud...' :
+                (solicitudPendiente ?
+                    'Solicitud en proceso' :
+                    'Solicitar cancelación');
+
+            estadoSolicitud.textContent = '';
+
+            if (alertaActiva && solicitud) {
+
+                if (solicitud.estado === 'PENDIENTE') {
+                    estadoSolicitud.textContent =
+                        'El operador revisará tu solicitud. La atención continúa activa.';
+
+                } else if (solicitud.estado === 'CODIGO_GENERADO') {
+                    estadoSolicitud.textContent =
+                        'Sigue las indicaciones del operador para completar la cancelación. La atención continúa activa.';
+
+                } else if (solicitud.estado === 'RECHAZADA') {
+                    estadoSolicitud.textContent =
+                        'El operador rechazó la solicitud. La atención continúa activa.';
+                }
             }
-
 
             if (alerta.policia) {
 

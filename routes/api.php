@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AlertaController;
 use App\Http\Controllers\Api\PersonalAuthController;
 use App\Http\Controllers\Api\MonitoreoController;
 use App\Http\Controllers\Api\PoliciaController;
+use App\Http\Controllers\Api\SolicitudCancelacionController;
 
 
 //Rutas públicas
@@ -48,6 +49,18 @@ Route::middleware('auth:sanctum')->group(function () {
         AlertaController::class,
         'misAlertas'
     ]);
+
+    Route::get('/monitoreo/solicitudes-cancelacion', [
+        SolicitudCancelacionController::class,
+        'pendientes'
+    ]);
+
+    Route::post('/monitoreo/solicitudes-cancelacion/{id}/generar-codigo', [
+        SolicitudCancelacionController::class,
+        'generarCodigo'
+    ])
+        ->whereNumber('id')
+        ->middleware('throttle:5,1');
 
     Route::get('/monitoreo/alertas', [
         MonitoreoController::class,
@@ -110,10 +123,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post(
         '/mis-alertas/{id}/cancelar',
         [
-            AlertaController::class,
-            'cancelar'
+            SolicitudCancelacionController::class,
+            'solicitar'
         ]
-    );
+    )->whereNumber('id');
 
     Route::get(
         '/policia/servicio-actual',

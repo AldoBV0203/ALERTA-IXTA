@@ -1398,6 +1398,50 @@
 
             </section>
 
+            <!-- SOLICITUDES DE CANCELACIÓN -->
+
+            <section
+                id="panelSolicitudesCancelacion"
+                class="panel"
+                style="margin-bottom: 20px;">
+
+                <div class="panel-encabezado">
+                    <h3>Solicitudes de cancelación</h3>
+
+                    <span id="cantidadSolicitudesCancelacion">
+                        Sin consultar
+                    </span>
+                </div>
+
+                <div class="tabla-contenedor">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Folio</th>
+                                <th>Ciudadano</th>
+                                <th>Teléfono</th>
+                                <th>Motivo</th>
+                                <th>Estado de solicitud</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="tablaSolicitudesCancelacion">
+                            <tr>
+                                <td colspan="6">
+                                    Las solicitudes aparecerán aquí.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p
+                    id="mensajeCodigoCancelacion"
+                    class="detalle-contenido"
+                    style="white-space: pre-wrap;"
+                    role="status"></p>
+
+            </section>
 
 
             <!-- PARTE INFERIOR -->
@@ -1728,12 +1772,7 @@
         }
 
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | MOSTRAR SISTEMA
-        |--------------------------------------------------------------------------
-        */
+        //mostrar el sistema
 
         function mostrarSistema() {
 
@@ -1779,16 +1818,13 @@
 
 
             cargarAlertas();
+            cargarSolicitudesCancelacion();
 
         }
 
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | MAPA
-        |--------------------------------------------------------------------------
-        */
+        //mapa
 
         function iniciarMapa() {
 
@@ -1895,13 +1931,194 @@
 
         }
 
+        let generandoCodigoCancelacion = false;
+
+        async function generarCodigoCancelacion(idSolicitud, folio) {
+            if (generandoCodigoCancelacion) {
+                return;
+            }
+
+            const confirmado = window.confirm(
+                '¿Confirmas que hablaste con el ciudadano y verificaste su solicitud de cancelación?'
+            );
+
+            if (!confirmado) {
+                return;
+            }
+
+            const texto = window.prompt(
+                'Escribe las observaciones de la llamada y la verificación realizada:'
+            );
+
+            if (texto === null) {
+                return;
+            }
+
+            const observaciones = texto.trim();
+            const mensaje = document.getElementById('mensajeCodigoCancelacion');
+
+            if (!observaciones || observaciones.length > 1000) {
+                mensaje.style.color = '#C62828';
+                mensaje.textContent = 'Escribe observaciones de entre 1 y 1000 caracteres.';
+                return;
+            }
+
+            generandoCodigoCancelacion = true;
+            mensaje.style.color = '#252A30';
+            mensaje.textContent = 'Generando código...';
+
+            document.querySelectorAll('#tablaSolicitudesCancelacion button')
+                .forEach(boton => boton.disabled = true);
+
+            try {
+                const respuesta = await fetch(
+                    API + '/monitoreo/solicitudes-cancelacion/' +
+                    idSolicitud + '/generar-codigo', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer ' + tokenMonitoreo,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            contacto_verificado: true,
+                            observaciones_operador: observaciones
+                        })
+                    }
+                );
+
+                if (respuesta.status === 401) {
+                    cerrarSesionMonitoreo();
+                    return;
+                }
+
+                const datos = await respuesta.json();
+
+                if (!respuesta.ok) {
+                    throw new Error(datos.message ?? 'No fue posible generar el código.');
+                }
+
+                const vencimiento = new Date(datos.codigo_expira_at)
+                    .toLocaleTimeString('es-MX');
+
+                mensaje.style.color = '#235B4E';
+                mensaje.textContent =
+                    'Folio: ' + folio +
+                    '\nCódigo: ' + datos.codigo +
+                    '\nVence a las: ' + vencimiento +
+                    '\nComunícalo al ciudadano durante la llamada. La alerta continúa activa.';
+
+            } catch (error) {
+                mensaje.style.color = '#C62828';
+                mensaje.textContent = error.message;
+            } finally {
+                generandoCodigoCancelacion = false;
+                await cargarSolicitudesCancelacion();
+            }
+        }
+
+        async function cargarSolicitudesCancelacion() {
+            const tabla = document.getElementById('tablaSolicitudesCancelacion');
+            const contador = document.getElementById('cantidadSolicitudesCancelacion');
+
+            try {
+                const respuesta = await fetch(
+                    API + '/monitoreo/solicitudes-cancelacion', {
+                        headers: {
+                            'Authorization': 'Bearer ' + tokenMonitoreo,
+                            'Accept': 'application/json'
+                        }
+                    }
+                );
+
+                if (respuesta.status === 401) {
+                    cerrarSesionMonitoreo();
+                    return;
+                }
+
+                const datos = await respuesta.json();
+
+                if (!respuesta.ok) {
+                    throw new Error(
+                        datos.message ?? 'No fue posible consultar las solicitudes.'
+                    );
+                }
+
+                const solicitudes = datos.solicitudes;
+                const contenido = document.createDocumentFragment();
+
+                if (solicitudes.length === 0) {
+                    const fila = document.createElement('tr');
+                    const celda = document.createElement('td');
+
+                    celda.colSpan = 6;
+                    celda.textContent = 'No hay solicitudes de cancelación pendientes.';
+
+                    fila.appendChild(celda);
+                    contenido.appendChild(fila);
+                }
+
+                solicitudes.forEach(function(solicitud) {
+                    const fila = document.createElement('tr');
+
+                    const valores = [
+                        solicitud.alerta.folio,
+                        solicitud.ciudadano.nombre ?? 'Sin nombre registrado',
+                        solicitud.ciudadano.telefono ?? 'Sin teléfono registrado',
+                        solicitud.motivo,
+                        solicitud.estado
+                    ];
+
+                    valores.forEach(function(valor) {
+                        const celda = document.createElement('td');
+
+                        celda.textContent = valor;
+                        celda.style.overflowWrap = 'anywhere';
+
+                        fila.appendChild(celda);
+                    });
+
+                    const acciones = document.createElement('td');
+                    const boton = document.createElement('button');
+
+                    const codigoVigente =
+                        solicitud.estado === 'CODIGO_GENERADO' &&
+                        Date.parse(solicitud.codigo_expira_at) > Date.now();
+
+                    boton.type = 'button';
+                    boton.className = 'btn-salir';
+                    boton.textContent = codigoVigente ?
+                        'Código vigente' :
+                        'Verificar y generar código';
+
+                    boton.disabled = generandoCodigoCancelacion || codigoVigente;
+
+                    boton.addEventListener('click', function() {
+                        generarCodigoCancelacion(
+                            solicitud.id,
+                            solicitud.alerta.folio
+                        );
+                    });
+
+                    acciones.appendChild(boton);
+                    fila.appendChild(acciones);
+                    contenido.appendChild(fila);
+                });
+
+                tabla.replaceChildren(contenido);
+
+                contador.textContent = solicitudes.length === 1 ?
+                    '1 solicitud' :
+                    solicitudes.length + ' solicitudes';
+
+            } catch (error) {
+                console.error('Error consultando cancelaciones:', error);
+                contador.textContent = 'No fue posible actualizar';
+            }
+        }
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | CARGAR ALERTAS
-        |--------------------------------------------------------------------------
-        */
+        //CARGAR ALERTAS
 
         async function cargarAlertas() {
 
@@ -3354,11 +3571,7 @@
 
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | RECARGA AUTOMÁTICA
-        |--------------------------------------------------------------------------
-        */
+        //recarga automatica
 
         setInterval(
             function() {
@@ -3368,6 +3581,7 @@
                 ) {
 
                     cargarAlertas();
+                    cargarSolicitudesCancelacion();
 
                     if (
                         idAlertaSeleccionada !== null

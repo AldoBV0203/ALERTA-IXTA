@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Models\SeguimientoAlerta;
 use App\Models\Operador;
+use App\Models\SolicitudCancelacion;
+use App\Models\User;
 
 class AlertaController extends Controller
 {
@@ -267,6 +269,16 @@ class AlertaController extends Controller
     {
         $usuario = $request->user();
 
+        // Esta consulta corresponde únicamente a ciudadanos activos.
+        if (
+            !($usuario instanceof User) ||
+            $usuario->estatus !== 'ACTIVO'
+        ) {
+            return response()->json([
+                'message' => 'No tienes permiso para consultar esta información.',
+            ], 403);
+        }
+
         // El ciudadano solamente puede consultar sus propias alertas.
         $alerta = Alerta::with([
             'tipo:id_tipo,nombre'
@@ -349,6 +361,14 @@ class AlertaController extends Controller
             ? $ultimaUbicacion->longitud
             : $alerta->longitud;
 
+        // Consultar la solicitud de cancelación más reciente de esta alerta.
+        $solicitudCancelacion = SolicitudCancelacion::where(
+            'id_alerta',
+            $alerta->id_alerta
+        )
+            ->orderByDesc('id')
+            ->first();
+
 
         return response()->json([
             'alerta' => [
@@ -364,6 +384,13 @@ class AlertaController extends Controller
                 ],
 
                 'policia' => $policia,
+
+                'solicitud_cancelacion' => $solicitudCancelacion ? [
+                    'id' => $solicitudCancelacion->id,
+                    'estado' => $solicitudCancelacion->estado,
+                    'codigo_expira_at' =>
+                    $solicitudCancelacion->codigo_expira_at?->toIso8601String(),
+                ] : null,
             ],
         ]);
     }
