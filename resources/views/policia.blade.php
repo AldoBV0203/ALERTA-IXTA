@@ -2304,6 +2304,10 @@
 
             ubicacionManual = true;
 
+            // Enfocar el mapa sin desplazar el panel.
+            mapaPolicia.getContainer().focus({
+                preventScroll: true
+            });
 
             document
                 .getElementById(
