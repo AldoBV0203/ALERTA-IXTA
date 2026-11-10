@@ -306,7 +306,7 @@
         }
 
         /* Cuadros del círculo de confianza*/
-        #listaContactosConfianza{
+        #listaContactosConfianza {
             background: #FFFFFF;
             border: 1px solid #DDDDDD;
             border-radius: 10px;
@@ -939,17 +939,31 @@
             async function() {
 
                 iniciarMapa();
+                obtenerUbicacion();
 
                 await cargarUsuario();
 
                 await cargarTiposAlerta();
 
-                obtenerUbicacion();
-
                 await cargarMisAlertas();
 
             }
         );
+
+        // Solicitar una ubicación nueva al recuperar la conexión.
+        window.addEventListener('online', function() {
+
+            // Conservar el punto manual durante las pruebas.
+            if (ubicacionManualCiudadano) {
+                actualizarUbicacionCiudadano();
+                return;
+            }
+
+            // Esperar una lectura nueva antes de volver a enviar.
+            ultimaLecturaGPSCiudadano = null;
+
+            obtenerUbicacion();
+        });
 
         // Marcar la pestaña seleccionada.
         function marcarPestanaCiudadano(seccion) {
@@ -1777,82 +1791,81 @@
 
 
         // Obtener GPS del ciudadano.
+        let idGPSCiudadano = null;
+        let ultimaLecturaGPSCiudadano = null;
+
+        // Obtener y mantener actualizada la ubicación del ciudadano.
         function obtenerUbicacion() {
 
-            const texto =
-                document.getElementById(
-                    'textoUbicacion'
-                );
+            const texto = document.getElementById('textoUbicacion');
 
-
-            if (!navigator.geolocation) {
-
-                texto.textContent =
-                    'Ubicación no disponible';
-
+            // Respetar la ubicación seleccionada manualmente.
+            if (ubicacionManualCiudadano) {
                 return;
             }
 
+            if (!navigator.geolocation) {
+                texto.textContent = 'Ubicación no disponible';
+                return;
+            }
 
-            navigator.geolocation.getCurrentPosition(
+            // Evitar varios seguimientos si se llama otra vez a esta función.
+            if (idGPSCiudadano !== null) {
+                navigator.geolocation.clearWatch(idGPSCiudadano);
+                idGPSCiudadano = null;
+            }
+
+            texto.textContent = '📍 Obteniendo ubicación...';
+
+            idGPSCiudadano = navigator.geolocation.watchPosition(
 
                 function(posicion) {
 
-                    if (
-                        ubicacionManualCiudadano
-                    ) {
+                    if (ubicacionManualCiudadano) {
                         return;
                     }
 
-                    latitudActual =
-                        posicion.coords.latitude;
-
-                    longitudActual =
-                        posicion.coords.longitude;
-
-                    precisionActual =
-                        posicion.coords.accuracy;
-
+                    latitudActual = posicion.coords.latitude;
+                    longitudActual = posicion.coords.longitude;
+                    precisionActual = posicion.coords.accuracy;
+                    ultimaLecturaGPSCiudadano = posicion.timestamp;
 
                     texto.textContent =
-                        '📍 Ubicación disponible - precision aproximada: ' + Math.round(precisionActual) + ' metros';
-
+                        '📍 Ubicación disponible - precisión aproximada: ' +
+                        Math.round(precisionActual) +
+                        ' metros';
 
                     actualizarMarcadorCiudadano(
                         latitudActual,
                         longitudActual
                     );
-
+                    actualizarUbicacionCiudadano();
                 },
-
 
                 function(error) {
 
-                    if (error.code === 1) {
-                        texto.textContent =
-                            'Permiso de ubicación denegado.';
-                    } else if (error.code === 2) {
-                        texto.textContent =
-                            'No se pudo determinar la ubicación.';
-                    } else if (error.code === 3) {
-                        texto.textContent =
-                            'La ubicación tardó demasiado en obtenerse.';
-                    } else {
-                        texto.textContent =
-                            'No se pudo obtener la ubicación.';
+                    if (ubicacionManualCiudadano) {
+                        return;
                     }
 
+                    if (error.code === 1) {
+                        texto.textContent = 'Permiso de ubicación denegado.';
+                    } else if (error.code === 2) {
+                        texto.textContent = 'No se pudo determinar la ubicación.';
+                    } else if (error.code === 3) {
+                        texto.textContent =
+                            'La ubicación tardó demasiado. Esperando una nueva lectura...';
+                    } else {
+                        texto.textContent = 'No se pudo obtener la ubicación.';
+                    }
                 },
-
 
                 {
                     enableHighAccuracy: true,
                     timeout: 30000,
-                    maximumAge: 5000
+                    maximumAge: 0
                 }
-
             );
-
         }
 
         // Permitir corregir manualmente la ubicación durante las pruebas.
@@ -2037,80 +2050,24 @@
         function actualizarUbicacionCiudadano() {
 
             if (
-                idAlertaActual === null
+                idAlertaActual === null ||
+                latitudActual === null ||
+                longitudActual === null
             ) {
                 return;
             }
 
-
-            // Si la ubicación fue corregida manualmente, no volvemos a pedir la ubicación de Chrome. Solamente enviamos el punto de prueba actual.
+            // En modo automático, esperar a recibir una ubicación.
             if (
-                ubicacionManualCiudadano
-            ) {
-
-                enviarUbicacionCiudadano();
-
-                return;
-
-            }
-
-
-            if (
-                !navigator.geolocation
+                !ubicacionManualCiudadano &&
+                ultimaLecturaGPSCiudadano === null
             ) {
                 return;
             }
 
-
-            navigator.geolocation.getCurrentPosition(
-
-                async function(
-                        posicion
-                    ) {
-
-                        latitudActual =
-                            posicion.coords.latitude;
-
-                        longitudActual =
-                            posicion.coords.longitude;
-
-                        precisionActual =
-                            posicion.coords.accuracy;
-
-
-                        actualizarMarcadorCiudadano(
-                            latitudActual,
-                            longitudActual
-                        );
-
-
-                        await enviarUbicacionCiudadano();
-
-                    },
-
-                    function(
-                        error
-                    ) {
-
-                        console.error(
-                            'No fue posible actualizar la ubicación:',
-                            error
-                        );
-
-                    },
-
-                    {
-
-                        enableHighAccuracy: true,
-
-                        timeout: 10000,
-
-                        maximumAge: 5000
-
-                    }
-
-            );
-
+            // Enviar la última posición conocida.
+            // watchPosition actualizará las coordenadas cuando reciba otra.
+            enviarUbicacionCiudadano();
         }
 
 
@@ -2650,13 +2607,24 @@
 
                     await consultarEstadoAlerta();
 
-
                     if (
-                        alertas[0].estado !==
-                        'CERRADA'
+                        alertas[0].estado !== 'CERRADA' &&
+                        alertas[0].estado !== 'CANCELADA'
                     ) {
 
+                        // Seguir consultando el estado de la alerta.
                         iniciarActualizacionAutomatica();
+
+                        // Reanudar el envío de ubicación cada 5 segundos.
+                        iniciarSeguimientoUbicacionCiudadano();
+
+                        // Solicitar una actualización sin esperar al primer intervalo.
+                        actualizarUbicacionCiudadano();
+
+                    } else {
+
+                        // Evitar enviar ubicación a una alerta terminada.
+                        idAlertaActual = null;
 
                     }
 
@@ -2805,26 +2773,6 @@
                     )
                     .textContent =
                     'Sin asignar';
-
-            }
-
-
-            if (
-                !ubicacionManualCiudadano &&
-                alerta.ubicacion &&
-                alerta.ubicacion.latitud &&
-                alerta.ubicacion.longitud
-            ) {
-
-                actualizarMarcadorCiudadano(
-                    parseFloat(
-                        alerta.ubicacion.latitud
-                    ),
-
-                    parseFloat(
-                        alerta.ubicacion.longitud
-                    )
-                );
 
             }
 
