@@ -1441,6 +1441,11 @@
                     style="white-space: pre-wrap;"
                     role="status"></p>
 
+                <p
+                    id="mensajeRechazoCancelacion"
+                    style="margin: 0 16px;"
+                    role="status"></p>
+
             </section>
 
 
@@ -1931,11 +1936,11 @@
 
         }
 
-        let generandoCodigoCancelacion = false;
+        let procesandoSolicitudCancelacion = false;
         let avisoCodigoCancelacion = null;
 
         async function generarCodigoCancelacion(idSolicitud, folio) {
-            if (generandoCodigoCancelacion) {
+            if (procesandoSolicitudCancelacion) {
                 return;
             }
 
@@ -1965,7 +1970,7 @@
                 return;
             }
 
-            generandoCodigoCancelacion = true;
+            procesandoSolicitudCancelacion = true;
             mensaje.style.color = '#252A30';
             mensaje.textContent = 'Generando código...';
 
@@ -2019,7 +2024,75 @@
                 mensaje.style.color = '#C62828';
                 mensaje.textContent = error.message;
             } finally {
-                generandoCodigoCancelacion = false;
+                procesandoSolicitudCancelacion = false;
+                await cargarSolicitudesCancelacion();
+            }
+        }
+
+        async function rechazarSolicitudCancelacion(idSolicitud, folio) {
+            if (procesandoSolicitudCancelacion) {
+                return;
+            }
+
+            const texto = window.prompt(
+                'Escribe el motivo para rechazar la solicitud del folio ' +
+                folio + '. La alerta continuará activa.'
+            );
+
+            if (texto === null) {
+                return;
+            }
+
+            const motivo = texto.trim();
+            const mensaje = document.getElementById('mensajeRechazoCancelacion');
+
+            if (!motivo || motivo.length > 1000) {
+                mensaje.style.color = '#C62828';
+                mensaje.textContent = 'Escribe un motivo de entre 1 y 1000 caracteres.';
+                return;
+            }
+
+            procesandoSolicitudCancelacion = true;
+            mensaje.style.color = '#252A30';
+            mensaje.textContent = 'Rechazando solicitud...';
+
+            document.querySelectorAll('#tablaSolicitudesCancelacion button')
+                .forEach(boton => boton.disabled = true);
+
+            try {
+                const respuesta = await fetch(
+                    API + '/monitoreo/solicitudes-cancelacion/' +
+                    idSolicitud + '/rechazar', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer ' + tokenMonitoreo,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            observaciones_operador: motivo
+                        })
+                    }
+                );
+
+                if (respuesta.status === 401) {
+                    cerrarSesionMonitoreo();
+                    return;
+                }
+
+                const datos = await respuesta.json();
+
+                if (!respuesta.ok) {
+                    throw new Error(datos.message ?? 'No fue posible rechazar la solicitud.');
+                }
+
+                mensaje.style.color = '#235B4E';
+                mensaje.textContent = 'Solicitud de cancelación rechazada para el folio ' + folio + '.';
+            } catch (error) {
+                mensaje.style.color = '#C62828';
+                mensaje.textContent = error.message;
+            } finally {
+                procesandoSolicitudCancelacion = false;
                 await cargarSolicitudesCancelacion();
             }
         }
@@ -2109,7 +2182,7 @@
                         'Código vigente' :
                         'Verificar y generar código';
 
-                    boton.disabled = generandoCodigoCancelacion || codigoVigente;
+                    boton.disabled = procesandoSolicitudCancelacion || codigoVigente;
 
                     boton.addEventListener('click', function() {
                         generarCodigoCancelacion(
@@ -2119,6 +2192,23 @@
                     });
 
                     acciones.appendChild(boton);
+                    const botonRechazar = document.createElement('button');
+
+                    botonRechazar.type = 'button';
+                    botonRechazar.className = 'btn-salir';
+                    botonRechazar.textContent = 'Rechazar solicitud';
+                    botonRechazar.style.marginLeft = '6px';
+                    botonRechazar.disabled = procesandoSolicitudCancelacion;
+
+                    botonRechazar.addEventListener('click', function() {
+                        rechazarSolicitudCancelacion(
+                            solicitud.id,
+                            solicitud.alerta.folio
+                        );
+                    });
+
+                    acciones.appendChild(botonRechazar);
+
                     fila.appendChild(acciones);
                     contenido.appendChild(fila);
                 });

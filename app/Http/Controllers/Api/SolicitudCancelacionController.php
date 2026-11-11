@@ -219,6 +219,99 @@ class SolicitudCancelacionController extends Controller
         });
     }
 
+    public function rechazar(Request $request, int $id)
+    {
+        $personal = $request->user();
+
+        if (
+            !($personal instanceof Operador) ||
+            !$personal->activo ||
+            !in_array(
+                $personal->rol,
+                ['OPERADOR', 'SUPERVISOR', 'ADMINISTRADOR'],
+                true
+            )
+        ) {
+            return response()->json([
+                'message' => 'No tienes permiso para rechazar solicitudes de cancelación.',
+            ], 403);
+        }
+
+        $datos = $request->validate([
+            'observaciones_operador' => 'required|string|max:1000',
+        ], [
+            'observaciones_operador.required' => 'Escribe el motivo del rechazo.',
+            'observaciones_operador.string' => 'El motivo del rechazo debe ser texto.',
+            'observaciones_operador.max' => 'El motivo no debe superar los 1000 caracteres.',
+        ]);
+
+        $idAlerta = SolicitudCancelacion::whereKey($id)->value('id_alerta');
+
+        if ($idAlerta === null) {
+            return response()->json([
+                'message' => 'La solicitud no existe.',
+            ], 404);
+        }
+
+        return DB::transaction(function () use ($id, $idAlerta, $personal, $datos) {
+            // Usar el mismo orden de bloqueo que al confirmar la cancelación.
+            $alerta = Alerta::where('id_alerta', $idAlerta)
+                ->lockForUpdate()
+                ->first();
+
+            $solicitud = SolicitudCancelacion::whereKey($id)
+                ->where('id_alerta', $idAlerta)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$alerta || !$solicitud) {
+                return response()->json([
+                    'message' => 'La alerta o la solicitud ya no existe.',
+                ], 404);
+            }
+
+            if (!in_array($alerta->estado, ['NUEVA', 'EN_CAMINO', 'EN_SITIO'], true)) {
+                return response()->json([
+                    'message' => 'La alerta ya terminó.',
+                ], 409);
+            }
+
+            if (!in_array($solicitud->estado, ['PENDIENTE', 'CODIGO_GENERADO'], true)) {
+                return response()->json([
+                    'message' => 'Esta solicitud ya fue resuelta.',
+                ], 409);
+            }
+
+            $ahora = now();
+
+            $solicitud->id_operador = $personal->id_operador;
+            $solicitud->estado = 'RECHAZADA';
+            $solicitud->observaciones_operador = trim($datos['observaciones_operador']);
+            $solicitud->codigo_hash = null;
+            $solicitud->codigo_expira_at = null;
+            $solicitud->resuelta_at = $ahora;
+            $solicitud->save();
+
+            SeguimientoAlerta::create([
+                'id_alerta' => $idAlerta,
+                'id_operador' => $personal->id_operador,
+                'accion' => 'RECHAZO_CANCELACION',
+                'observaciones' =>
+                'El operador rechazó la solicitud de cancelación #' . $solicitud->id . '.',
+                'fecha_hora' => $ahora,
+            ]);
+
+            return response()->json([
+                'message' => 'Solicitud rechazada. La alerta continúa activa.',
+                'solicitud' => [
+                    'id' => $solicitud->id,
+                    'estado' => $solicitud->estado,
+                ],
+            ]);
+        }, 3);
+    }
+
+
     public function confirmarCancelacion(Request $request, int $id)
     {
         $ciudadano = $request->user();

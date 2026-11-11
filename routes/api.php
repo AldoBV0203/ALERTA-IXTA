@@ -67,6 +67,11 @@ Route::middleware('auth:sanctum')->group(function () {
         'alertas'
     ]);
 
+    Route::post('/monitoreo/solicitudes-cancelacion/{id}/rechazar', [
+        SolicitudCancelacionController::class,
+        'rechazar'
+    ])->whereNumber('id');
+
     Route::get(
         '/monitoreo/policias',
         [MonitoreoController::class, 'policias']

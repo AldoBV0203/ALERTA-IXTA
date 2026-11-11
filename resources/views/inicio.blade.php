@@ -2559,9 +2559,7 @@
                     return;
                 }
 
-                mensaje.style.color = '#235B4E';
-                mensaje.textContent =
-                    datos.message ?? 'Solicitud registrada. La atención continúa.';
+                mensaje.textContent = '';
 
             } catch (error) {
 
