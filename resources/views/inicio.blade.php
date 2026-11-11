@@ -667,6 +667,34 @@
 
                     <p id="estadoSolicitudCancelacion" class="info"></p>
 
+                    <form
+                        id="formConfirmarCancelacion"
+                        onsubmit="confirmarCancelacion(event)"
+                        hidden>
+
+                        <label for="codigoCancelacion">Código de cancelación</label>
+
+                        <input
+                            id="codigoCancelacion"
+                            type="text"
+                            inputmode="numeric"
+                            autocomplete="one-time-code"
+                            maxlength="6"
+                            pattern="[0-9]{6}"
+                            placeholder="Seis dígitos"
+                            style="display: block; margin: 8px 0; padding: 8px;"
+                            required>
+
+                        <button
+                            id="btnConfirmarCancelacion"
+                            type="submit"
+                            class="boton boton-cancelar-alerta">
+                            Confirmar cancelación
+                        </button>
+
+                        <p id="mensajeConfirmacionCancelacion" class="info" role="status"></p>
+                    </form>
+
                 </div>
 
                 <section
@@ -1874,6 +1902,11 @@
         // Permitir corregir manualmente la ubicación durante las pruebas.
         function corregirUbicacionManual() {
 
+            // Enfocar el mapa sin desplazar el panel.
+            mapa.getContainer().focus({
+                preventScroll: true
+            });
+
             const texto =
                 document.getElementById(
                     'textoUbicacion'
@@ -2409,6 +2442,67 @@
 
         }
 
+        async function confirmarCancelacion(evento) {
+            evento.preventDefault();
+
+            const idAlerta = idAlertaActual;
+            const boton = document.getElementById('btnConfirmarCancelacion');
+            const campo = document.getElementById('codigoCancelacion');
+            const mensaje = document.getElementById('mensajeConfirmacionCancelacion');
+
+            if (idAlerta === null || boton.disabled) {
+                return;
+            }
+
+            boton.disabled = true;
+            mensaje.textContent = 'Verificando código...';
+
+            try {
+                const respuesta = await fetch(
+                    API + '/mis-alertas/' + idAlerta + '/confirmar-cancelacion', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer ' + token,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            codigo: campo.value
+                        })
+                    }
+                );
+
+                const datos = await respuesta.json();
+
+                if (!respuesta.ok) {
+                    mensaje.textContent =
+                        datos.message ?? 'No fue posible confirmar la cancelación.';
+
+                    if (Number.isInteger(datos.intentos_restantes)) {
+                        mensaje.textContent +=
+                            ' Intentos restantes: ' + datos.intentos_restantes + '.';
+                    }
+
+                    return;
+                }
+
+                if (idAlertaActual === idAlerta) {
+                    mostrarEstado({
+                        ...datos.alerta,
+                        tipo: document.getElementById('tipoActual').textContent.trim()
+                    });
+
+                    const mensajeAlerta = document.getElementById('mensajeAlerta');
+                    mensajeAlerta.style.color = '#235B4E';
+                    mensajeAlerta.textContent = datos.message;
+                }
+            } catch (error) {
+                mensaje.textContent = 'No fue posible conectar con el servidor.';
+            } finally {
+                boton.disabled = false;
+            }
+        }
+
         async function cancelarAlerta() {
 
             if (!idAlertaActual || enviandoSolicitudCancelacion) {
@@ -2618,6 +2712,10 @@
         // Mostrar estado de la alerta.
         function mostrarEstado(alerta) {
 
+            if (alerta.id_alerta !== idAlertaActual) {
+                return;
+            }
+
             document
                 .getElementById(
                     'panelEstado'
@@ -2659,6 +2757,18 @@
 
             const solicitud = alerta.solicitud_cancelacion;
 
+            const codigoVigente =
+                solicitud?.estado === 'CODIGO_GENERADO' &&
+                Date.parse(solicitud.codigo_expira_at) > Date.now();
+
+            const formulario = document.getElementById('formConfirmarCancelacion');
+            formulario.hidden = !alertaActiva || !codigoVigente;
+
+            if (formulario.hidden) {
+                formulario.reset();
+                document.getElementById('mensajeConfirmacionCancelacion').textContent = '';
+            }
+
             const solicitudPendiente = Boolean(
                 solicitud && ['PENDIENTE', 'CODIGO_GENERADO'].includes(solicitud.estado)
             );
@@ -2684,8 +2794,9 @@
                         'El operador revisará tu solicitud. La atención continúa activa.';
 
                 } else if (solicitud.estado === 'CODIGO_GENERADO') {
-                    estadoSolicitud.textContent =
-                        'Sigue las indicaciones del operador para completar la cancelación. La atención continúa activa.';
+                    estadoSolicitud.textContent = codigoVigente ?
+                        'Ingresa el código que te dio el operador para confirmar la cancelación.' :
+                        'El código venció. Contacta al operador para obtener uno nuevo.';
 
                 } else if (solicitud.estado === 'RECHAZADA') {
                     estadoSolicitud.textContent =
@@ -2715,24 +2826,17 @@
 
 
             actualizarPoliciaEnMapa(
-                alerta
+                alertaActiva ? alerta : {
+                    policia: null
+                }
             );
 
+            if (alerta.estado === 'CERRADA' || alerta.estado === 'CANCELADA') {
+                clearInterval(intervaloEstado);
+                intervaloEstado = null;
 
-            if (
-                alerta.estado === 'CERRADA' || alerta.estado === 'CANCELADA'
-            ) {
-
-                if (intervaloEstado) {
-
-                    clearInterval(
-                        intervaloEstado
-                    );
-
-                    intervaloEstado = null;
-
-                }
-
+                detenerSeguimientoUbicacionCiudadano();
+                idAlertaActual = null;
             }
 
         }

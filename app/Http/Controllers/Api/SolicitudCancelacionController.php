@@ -219,6 +219,135 @@ class SolicitudCancelacionController extends Controller
         });
     }
 
+    public function confirmarCancelacion(Request $request, int $id)
+    {
+        $ciudadano = $request->user();
+
+        if (
+            !($ciudadano instanceof User) ||
+            $ciudadano->estatus !== 'ACTIVO'
+        ) {
+            return response()->json([
+                'message' => 'Solo un ciudadano con cuenta activa puede confirmar la cancelación.',
+            ], 403);
+        }
+
+        $datos = $request->validate([
+            'codigo' => 'required|string|digits:6',
+        ], [
+            'codigo.required' => 'Escribe el código que te dio el operador.',
+            'codigo.string' => 'Envía el código como texto.',
+            'codigo.digits' => 'El código debe tener seis dígitos.',
+        ]);
+
+        return DB::transaction(function () use ($id, $ciudadano, $datos) {
+            // Bloquear primero la alerta, igual que al generar el código.
+            $alerta = Alerta::where('id_alerta', $id)
+                ->where('id_usuario', $ciudadano->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$alerta) {
+                return response()->json([
+                    'message' => 'No se encontró la alerta en tu cuenta.',
+                ], 404);
+            }
+
+            if (!in_array(
+                $alerta->estado,
+                ['NUEVA', 'EN_CAMINO', 'EN_SITIO'],
+                true
+            )) {
+                return response()->json([
+                    'message' => 'La alerta ya terminó.',
+                ], 409);
+            }
+
+            $solicitud = SolicitudCancelacion::where('id_alerta', $id)
+                ->where('id_usuario', $ciudadano->id)
+                ->orderByDesc('id')
+                ->lockForUpdate()
+                ->first();
+
+            if (
+                !$solicitud ||
+                $solicitud->estado !== 'CODIGO_GENERADO' ||
+                !$solicitud->contacto_verificado_at ||
+                !$solicitud->codigo_hash
+            ) {
+                return response()->json([
+                    'message' => 'La solicitud aún no tiene un código autorizado.',
+                ], 409);
+            }
+
+            if (!($solicitud->codigo_expira_at?->isFuture())) {
+                return response()->json([
+                    'message' => 'El código venció. Contacta al operador para obtener uno nuevo.',
+                ], 409);
+            }
+
+            if ($solicitud->intentos >= 5) {
+                return response()->json([
+                    'message' => 'Agotaste los intentos para este código. Contacta al operador.',
+                ], 429);
+            }
+
+            if (!Hash::check($datos['codigo'], $solicitud->codigo_hash)) {
+                $solicitud->intentos++;
+                $solicitud->save();
+
+                return response()->json([
+                    'message' => $solicitud->intentos >= 5
+                        ? 'Agotaste los intentos para este código. Contacta al operador.'
+                        : 'El código es incorrecto.',
+                    'intentos_restantes' => 5 - $solicitud->intentos,
+                ], 422);
+            }
+
+            $ahora = now();
+
+            $alerta->estado = 'CANCELADA';
+            $alerta->save();
+
+            $solicitud->estado = 'CONFIRMADA';
+            $solicitud->codigo_hash = null;
+            $solicitud->codigo_expira_at = null;
+            $solicitud->resuelta_at = $ahora;
+            $solicitud->save();
+
+            $idPolicia = SeguimientoAlerta::where('id_alerta', $id)
+                ->where('accion', 'ACEPTO_ALERTA')
+                ->orderByDesc('id')
+                ->value('id_operador');
+
+            if ($idPolicia !== null) {
+                Operador::where('id_operador', $idPolicia)
+                    ->where('rol', 'POLICIA')
+                    ->update(['disponible' => true]);
+            }
+
+            SeguimientoAlerta::create([
+                'id_alerta' => $id,
+                'id_operador' => null,
+                'accion' => 'CANCELACION_CIUDADANO',
+                'observaciones' =>
+                'El ciudadano confirmó la solicitud de cancelación #' .
+                    $solicitud->id . ' con el código del operador.',
+                'fecha_hora' => $ahora,
+            ]);
+
+            return response()->json([
+                'message' => 'Alerta cancelada correctamente.',
+                'alerta' => [
+                    'id_alerta' => $alerta->id_alerta,
+                    'folio' => $alerta->folio,
+                    'estado' => $alerta->estado,
+                ],
+            ]);
+        }, 3);
+    }
+
+
     public function solicitar(Request $request, int $id)
     {
         $ciudadano = $request->user();

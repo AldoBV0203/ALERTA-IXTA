@@ -1932,6 +1932,7 @@
         }
 
         let generandoCodigoCancelacion = false;
+        let avisoCodigoCancelacion = null;
 
         async function generarCodigoCancelacion(idSolicitud, folio) {
             if (generandoCodigoCancelacion) {
@@ -1956,6 +1957,7 @@
 
             const observaciones = texto.trim();
             const mensaje = document.getElementById('mensajeCodigoCancelacion');
+            avisoCodigoCancelacion = null;
 
             if (!observaciones || observaciones.length > 1000) {
                 mensaje.style.color = '#C62828';
@@ -2001,6 +2003,11 @@
                 const vencimiento = new Date(datos.codigo_expira_at)
                     .toLocaleTimeString('es-MX');
 
+                avisoCodigoCancelacion = {
+                    idSolicitud: idSolicitud,
+                    expiraEn: Date.parse(datos.codigo_expira_at)
+                };
+
                 mensaje.style.color = '#235B4E';
                 mensaje.textContent =
                     'Folio: ' + folio +
@@ -2020,6 +2027,7 @@
         async function cargarSolicitudesCancelacion() {
             const tabla = document.getElementById('tablaSolicitudesCancelacion');
             const contador = document.getElementById('cantidadSolicitudesCancelacion');
+            const avisoConsultado = avisoCodigoCancelacion;
 
             try {
                 const respuesta = await fetch(
@@ -2045,6 +2053,16 @@
                 }
 
                 const solicitudes = datos.solicitudes;
+                if (avisoConsultado && avisoCodigoCancelacion === avisoConsultado) {
+                    const solicitudSiguePendiente = solicitudes.some(
+                        solicitud => solicitud.id === avisoConsultado.idSolicitud
+                    );
+
+                    if (!solicitudSiguePendiente || Date.now() >= avisoConsultado.expiraEn) {
+                        document.getElementById('mensajeCodigoCancelacion').textContent = '';
+                        avisoCodigoCancelacion = null;
+                    }
+                }
                 const contenido = document.createDocumentFragment();
 
                 if (solicitudes.length === 0) {

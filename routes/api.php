@@ -128,6 +128,13 @@ Route::middleware('auth:sanctum')->group(function () {
         ]
     )->whereNumber('id');
 
+    Route::post('/mis-alertas/{id}/confirmar-cancelacion', [
+        SolicitudCancelacionController::class,
+        'confirmarCancelacion'
+    ])
+        ->whereNumber('id')
+        ->middleware('throttle:10,1,confirmar-cancelacion');
+
     Route::get(
         '/policia/servicio-actual',
         [PoliciaController::class, 'servicioActual']
