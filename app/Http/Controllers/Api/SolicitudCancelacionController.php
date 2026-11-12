@@ -99,14 +99,12 @@ class SolicitudCancelacionController extends Controller
 
         $datos = $request->validate([
             'contacto_verificado' => 'required|accepted',
-            'observaciones_operador' => 'required|string|max:1000',
+            'observaciones_operador' => 'nullable|string|max:1000',
         ], [
             'contacto_verificado.required' =>
             'Debes confirmar que verificaste el contacto con el ciudadano.',
             'contacto_verificado.accepted' =>
             'Debes confirmar que verificaste el contacto con el ciudadano.',
-            'observaciones_operador.required' =>
-            'Registra las observaciones de la verificación.',
             'observaciones_operador.string' =>
             'Las observaciones deben ser texto.',
             'observaciones_operador.max' =>
@@ -190,8 +188,9 @@ class SolicitudCancelacionController extends Controller
             $solicitud->codigo_expira_at = $expira;
             $solicitud->intentos = 0;
             $solicitud->contacto_verificado_at = $ahora;
-            $solicitud->observaciones_operador =
-                trim($datos['observaciones_operador']);
+            if (isset($datos['observaciones_operador'])) {
+                $solicitud->observaciones_operador = trim($datos['observaciones_operador']);
+            }
             $solicitud->save();
 
             SeguimientoAlerta::create([

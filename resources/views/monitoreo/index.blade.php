@@ -1971,31 +1971,8 @@
                 return;
             }
 
-            const confirmado = window.confirm(
-                '¿Confirmas que hablaste con el ciudadano y verificaste su solicitud de cancelación?'
-            );
-
-            if (!confirmado) {
-                return;
-            }
-
-            const texto = window.prompt(
-                'Escribe las observaciones de la llamada y la verificación realizada:'
-            );
-
-            if (texto === null) {
-                return;
-            }
-
-            const observaciones = texto.trim();
             const mensaje = document.getElementById('mensajeCodigoCancelacion');
             avisoCodigoCancelacion = null;
-
-            if (!observaciones || observaciones.length > 1000) {
-                mensaje.style.color = '#C62828';
-                mensaje.textContent = 'Escribe observaciones de entre 1 y 1000 caracteres.';
-                return;
-            }
 
             procesandoSolicitudCancelacion = true;
             mensaje.style.color = '#252A30';
@@ -2016,7 +1993,6 @@
                         },
                         body: JSON.stringify({
                             contacto_verificado: true,
-                            observaciones_operador: observaciones
                         })
                     }
                 );
