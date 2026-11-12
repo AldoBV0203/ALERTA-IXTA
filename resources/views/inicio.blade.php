@@ -690,6 +690,17 @@
 
                     <button
                         type="button"
+                        id="btnConfirmarAtencionCiudadano"
+                        class="boton"
+                        onclick="confirmarAtencionCiudadano()"
+                        style="display: none; margin-top: 10px; background: var(--vino-principal);">
+                        Confirmar que recibí atención
+                    </button>
+
+                    <p id="mensajeConfirmacionAtencion" class="info" role="status" hidden></p>
+
+                    <button
+                        type="button"
                         id="btnCancelarAlerta"
                         class="boton boton-cancelar-alerta"
                         onclick="cancelarAlerta()"
@@ -984,6 +995,7 @@
         let precisionActual = null;
 
         let idAlertaActual = null;
+        let estadoAlertaActual = null;
         let enviandoSolicitudCancelacion = false;
 
         let intervaloEstado = null;
@@ -1106,14 +1118,8 @@
                     return;
                 }
 
-                // Mostrar solamente alertas terminadas o canceladas.
                 const historial = alertas.filter(function(alerta) {
-
-                    return (
-                        alerta.estado === 'CERRADA' ||
-                        alerta.estado === 'CANCELADA'
-                    );
-
+                    return ['CERRADA', 'CANCELADA', 'PENDIENTE_CONFIRMACION'].includes(alerta.estado);
                 });
 
                 lista.replaceChildren();
@@ -1201,6 +1207,46 @@
                         tarjeta.appendChild(parrafo);
 
                     });
+                    if (alerta.estado === 'PENDIENTE_CONFIRMACION') {
+                        const boton = document.createElement('button');
+                        boton.type = 'button';
+                        boton.className = 'boton';
+                        boton.style.background = 'var(--vino-principal)';
+                        boton.textContent = 'Confirmar que recibí atención';
+
+                        const mensaje = document.createElement('p');
+                        mensaje.className = 'info';
+                        mensaje.setAttribute('role', 'status');
+
+                        boton.addEventListener('click', async function() {
+                            boton.disabled = true;
+                            mensaje.textContent = 'Registrando confirmación...';
+
+                            try {
+                                const {
+                                    respuesta,
+                                    datos
+                                } = await enviarConfirmacionAtencion(alerta.id_alerta);
+
+                                if (!respuesta.ok) {
+                                    mensaje.textContent = datos.message ?? 'No se pudo confirmar la atención.';
+                                    return;
+                                }
+
+                                if (idAlertaActual === alerta.id_alerta) {
+                                    await consultarEstadoAlerta();
+                                }
+
+                                await cargarHistorialCiudadano();
+                            } catch (error) {
+                                mensaje.textContent = 'No se pudo conectar. Intenta nuevamente.';
+                            } finally {
+                                boton.disabled = false;
+                            }
+                        });
+
+                        tarjeta.append(boton, mensaje);
+                    }
 
                     lista.appendChild(tarjeta);
 
@@ -2165,6 +2211,7 @@
 
             if (
                 idAlertaActual === null ||
+                !['NUEVA', 'EN_CAMINO', 'EN_SITIO'].includes(estadoAlertaActual) ||
                 latitudActual === null ||
                 longitudActual === null
             ) {
@@ -2573,6 +2620,7 @@
                 idAlertaActual =
                     datos.alerta.id_alerta;
 
+                estadoAlertaActual = datos.alerta.estado;
 
                 mensaje.style.color =
                     '#235B4E';
@@ -2778,27 +2826,19 @@
                         alertas[0].id_alerta;
 
 
+                    estadoAlertaActual = alertas[0].estado;
                     await consultarEstadoAlerta();
 
-                    if (
-                        alertas[0].estado !== 'CERRADA' &&
-                        alertas[0].estado !== 'CANCELADA'
-                    ) {
-
-                        // Seguir consultando el estado de la alerta.
-                        iniciarActualizacionAutomatica();
-
-                        // Reanudar el envío de ubicación cada 5 segundos.
-                        iniciarSeguimientoUbicacionCiudadano();
-
-                        // Solicitar una actualización sin esperar al primer intervalo.
-                        actualizarUbicacionCiudadano();
-
-                    } else {
-
-                        // Evitar enviar ubicación a una alerta terminada.
+                    if (['CERRADA', 'CANCELADA'].includes(estadoAlertaActual)) {
                         idAlertaActual = null;
+                        return;
+                    }
 
+                    iniciarActualizacionAutomatica();
+
+                    if (['NUEVA', 'EN_CAMINO', 'EN_SITIO'].includes(estadoAlertaActual)) {
+                        iniciarSeguimientoUbicacionCiudadano();
+                        actualizarUbicacionCiudadano();
                     }
 
                 }
@@ -2865,6 +2905,108 @@
 
         }
 
+        let confirmandoAtencionCiudadano = false;
+        let idAtencionConfirmadaCiudadano = null;
+
+        function mostrarConfirmacionAtencion(alerta) {
+            const boton = document.getElementById('btnConfirmarAtencionCiudadano');
+            const mensaje = document.getElementById('mensajeConfirmacionAtencion');
+            const idAlerta = String(alerta.id_alerta);
+
+            if (mensaje.dataset.idAlerta !== idAlerta) {
+                mensaje.dataset.idAlerta = idAlerta;
+                mensaje.textContent = '';
+            }
+
+            if (alerta.atencion_confirmada === true) {
+                idAtencionConfirmadaCiudadano = idAlerta;
+            }
+
+            const confirmada = idAtencionConfirmadaCiudadano === idAlerta;
+            const puedeConfirmar = ['EN_SITIO', 'PENDIENTE_CONFIRMACION'].includes(alerta.estado);
+
+            boton.style.display = puedeConfirmar && !confirmada ? 'block' : 'none';
+            boton.disabled = confirmandoAtencionCiudadano;
+
+            if (confirmada && (puedeConfirmar || alerta.estado === 'CERRADA')) {
+                mensaje.style.color = '#235B4E';
+                mensaje.textContent = alerta.estado === 'EN_SITIO' ?
+                    'Confirmaste que recibiste la atención. Falta que el policía finalice.' :
+                    'Confirmaste que recibiste la atención.';
+            } else if (!puedeConfirmar) {
+                mensaje.textContent = '';
+            }
+
+            mensaje.hidden = !mensaje.textContent;
+        }
+
+        async function enviarConfirmacionAtencion(idAlerta) {
+            const respuesta = await fetch(API + '/mis-alertas/' + idAlerta + '/confirmar-atencion', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Accept': 'application/json'
+                }
+            });
+
+            const datos = await respuesta.json();
+            return {
+                respuesta,
+                datos
+            };
+        }
+
+        async function confirmarAtencionCiudadano() {
+            const idAlerta = idAlertaActual;
+            const boton = document.getElementById('btnConfirmarAtencionCiudadano');
+            const mensaje = document.getElementById('mensajeConfirmacionAtencion');
+
+            if (!idAlerta || confirmandoAtencionCiudadano || boton.style.display === 'none') {
+                return;
+            }
+
+            confirmandoAtencionCiudadano = true;
+            boton.disabled = true;
+
+            try {
+                const {
+                    respuesta,
+                    datos
+                } = await enviarConfirmacionAtencion(idAlerta);
+
+                if (idAlertaActual !== idAlerta) {
+                    return;
+                }
+
+                if (!respuesta.ok) {
+                    mensaje.style.color = '#9F2241';
+                    mensaje.textContent = datos.message ?? 'No se pudo confirmar la atención.';
+                    mensaje.hidden = false;
+                    return;
+                }
+
+                mostrarConfirmacionAtencion({
+                    id_alerta: idAlerta,
+                    estado: datos.estado,
+                    atencion_confirmada: true
+                });
+
+                document.getElementById('btnCancelarAlerta').style.display = 'none';
+                document.getElementById('formConfirmarCancelacion').hidden = true;
+                document.getElementById('estadoSolicitudCancelacion').textContent = '';
+                await consultarEstadoAlerta();
+            } catch (error) {
+                if (idAlertaActual === idAlerta) {
+                    mensaje.style.color = '#9F2241';
+                    mensaje.textContent = 'No se pudo conectar. Intenta nuevamente.';
+                    mensaje.hidden = false;
+                }
+            } finally {
+                confirmandoAtencionCiudadano = false;
+                boton.disabled = false;
+            }
+        }
+
 
         // Mostrar estado de la alerta.
         function mostrarEstado(alerta) {
@@ -2872,6 +3014,8 @@
             if (alerta.id_alerta !== idAlertaActual) {
                 return;
             }
+
+            mostrarConfirmacionAtencion(alerta);
 
             document
                 .getElementById(
@@ -2897,12 +3041,16 @@
                 alerta.tipo;
 
 
-            document
-                .getElementById(
-                    'estado'
-                )
-                .textContent =
+            estadoAlertaActual = alerta.estado;
+
+            document.getElementById('estado').textContent =
+                alerta.estado === 'PENDIENTE_CONFIRMACION' ?
+                'Pendiente de confirmación' :
                 alerta.estado;
+
+            if (alerta.estado === 'PENDIENTE_CONFIRMACION') {
+                detenerSeguimientoUbicacionCiudadano();
+            }
 
             const btnCancelarAlerta =
                 document.getElementById('btnCancelarAlerta');
@@ -2911,6 +3059,8 @@
                 document.getElementById('estadoSolicitudCancelacion');
 
             const alertaActiva = ['NUEVA', 'EN_CAMINO', 'EN_SITIO'].includes(alerta.estado);
+            const puedeCancelar = alertaActiva &&
+                idAtencionConfirmadaCiudadano !== String(alerta.id_alerta);
 
             const solicitud = alerta.solicitud_cancelacion;
 
@@ -2919,7 +3069,7 @@
                 Date.parse(solicitud.codigo_expira_at) > Date.now();
 
             const formulario = document.getElementById('formConfirmarCancelacion');
-            formulario.hidden = !alertaActiva || !codigoVigente;
+            formulario.hidden = !puedeCancelar || !codigoVigente;
 
             if (formulario.hidden) {
                 formulario.reset();
@@ -2931,7 +3081,7 @@
             );
 
             btnCancelarAlerta.style.display =
-                alertaActiva ? 'block' : 'none';
+                puedeCancelar ? 'block' : 'none';
 
             btnCancelarAlerta.disabled =
                 enviandoSolicitudCancelacion || solicitudPendiente;
@@ -2944,7 +3094,7 @@
 
             estadoSolicitud.textContent = '';
 
-            if (alertaActiva && solicitud) {
+            if (puedeCancelar && solicitud) {
 
                 if (solicitud.estado === 'PENDIENTE') {
                     estadoSolicitud.textContent =

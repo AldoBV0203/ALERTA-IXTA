@@ -817,7 +817,8 @@
         }
 
 
-        .estado-EN_SITIO {
+        .estado-EN_SITIO,
+        .estado-PENDIENTE_CONFIRMACION {
             color:
                 #A14800;
 
@@ -2540,7 +2541,10 @@
                                 estado
                                 estado-${alerta.estado}
                             ">
-                            ${alerta.estado}
+                            ${alerta.estado === 'PENDIENTE_CONFIRMACION' ? 'Pendiente de confirmación' : alerta.estado}
+                            ${alerta.estado === 'EN_SITIO' && alerta.atencion_confirmada
+                            ? '<br><small>El ciudadano confirmó. Falta que el policía finalice.</small>'
+                            : ''}
                         </span>
                     </td>
 
@@ -3130,7 +3134,10 @@
                         estado-${alerta.estado}
                     ">
 
-                    ${alerta.estado}
+                    ${alerta.estado === 'PENDIENTE_CONFIRMACION' ? 'Pendiente de confirmación' : alerta.estado}
+                    ${alerta.estado === 'EN_SITIO' && alerta.atencion_confirmada
+                    ? '<br><small>El ciudadano confirmó. Falta que el policía finalice.</small>'
+                    : ''}
 
                 </span>
 

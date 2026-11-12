@@ -159,6 +159,11 @@ Route::middleware('auth:sanctum')->group(function () {
         ]
     )->whereNumber('id');
 
+    Route::post('/mis-alertas/{id}/confirmar-atencion', [
+        AlertaController::class,
+        'confirmarAtencion',
+    ])->whereNumber('id');
+
     Route::post('/mis-alertas/{id}/confirmar-cancelacion', [
         SolicitudCancelacionController::class,
         'confirmarCancelacion'

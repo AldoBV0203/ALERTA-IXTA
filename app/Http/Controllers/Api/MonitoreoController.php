@@ -71,7 +71,7 @@ class MonitoreoController extends Controller
         $alertas =
             Alerta::with([
                 'tipo:id_tipo,nombre'
-            ])
+            ])->withExists('confirmacionAtencionCiudadano as atencion_confirmada')
             ->orderByDesc('id_alerta')
             ->get();
 
@@ -164,6 +164,8 @@ class MonitoreoController extends Controller
                         'estado' =>
                         $alerta->estado,
 
+                        'atencion_confirmada' => (bool) $alerta->atencion_confirmada,
+
                     ];
                 }
             );
@@ -210,7 +212,7 @@ class MonitoreoController extends Controller
 
         $alerta = Alerta::with([
             'tipo:id_tipo,nombre'
-        ])
+        ])->withExists('confirmacionAtencionCiudadano as atencion_confirmada')
             ->where('id_alerta', $id)
             ->first();
 
@@ -301,6 +303,7 @@ class MonitoreoController extends Controller
                 'prioridad' => $alerta->prioridad,
 
                 'estado' => $alerta->estado,
+                'atencion_confirmada' => (bool) $alerta->atencion_confirmada,
 
                 'ubicacion' => [
                     'latitud' =>
@@ -841,133 +844,82 @@ class MonitoreoController extends Controller
         }
 
         $datos = $request->validate([
-            'observaciones' => [
-                'required',
-                'string',
-                'max:1000',
-            ],
+            'observaciones' => 'required|string|max:1000',
         ]);
 
-        $resultado = DB::transaction(function () use (
-            $id,
-            $personal,
-            $datos
-        ) {
-
-            $alerta = Alerta::where(
-                'id_alerta',
-                $id
-            )
-                ->lockForUpdate()
-                ->first();
+        return DB::transaction(function () use ($request, $id, $personal, $datos) {
+            $alerta = Alerta::whereKey($id)->lockForUpdate()->first();
 
             if (!$alerta) {
-                return 'NO_EXISTE';
+                return response()->json(['message' => 'La alerta no existe.'], 404);
             }
 
             if ($alerta->estado === 'NUEVA') {
-                return 'NO_ACEPTADA';
+                return response()->json([
+                    'message' => 'La alerta debe ser aceptada antes de finalizar la atención.',
+                ], 409);
             }
 
-            if ($alerta->estado === 'CERRADA') {
-                return 'YA_CERRADA';
+            if ($this->obtenerOperadorAsignado($id) !== (int) $personal->id_operador) {
+                return response()->json([
+                    'message' => 'Esta alerta está asignada a otro operador.',
+                ], 403);
             }
 
-            if ($alerta->estado !== 'EN_SITIO') {
-                return 'NO_EN_SITIO';
+            if ($alerta->estado === 'EN_SITIO') {
+                $rutaEvidencia = SeguimientoAlerta::where('id_alerta', $id)
+                    ->where('id_operador', $personal->id_operador)
+                    ->where('accion', 'EVIDENCIA_POLICIAL')
+                    ->value('evidencia_foto_path');
+
+                if (blank($rutaEvidencia) || !Storage::disk('local')->exists($rutaEvidencia)) {
+                    return response()->json([
+                        'message' => 'Sube la foto de evidencia antes de finalizar la atención.',
+                    ], 409);
+                }
+
+                SeguimientoAlerta::create([
+                    'id_alerta' => $id,
+                    'id_operador' => $personal->id_operador,
+                    'accion' => 'ATENCION_FINALIZADA_POLICIA',
+                    'observaciones' => $datos['observaciones'],
+                    'fecha_hora' => now(),
+                ]);
+
+                $alerta->estado = 'PENDIENTE_CONFIRMACION';
+                $alerta->save();
+
+                $personal->disponible = true;
+                $personal->save();
+
+                $this->registrarAuditoria($request, $personal, 'FINALIZAR_ATENCION_POLICIA', $id);
+            } else {
+                $yaFinalizada = in_array($alerta->estado, ['PENDIENTE_CONFIRMACION', 'CERRADA'], true)
+                    && SeguimientoAlerta::where('id_alerta', $id)
+                    ->where('id_operador', $personal->id_operador)
+                    ->where('accion', 'ATENCION_FINALIZADA_POLICIA')
+                    ->exists();
+
+                if (!$yaFinalizada) {
+                    return response()->json([
+                        'message' => 'La alerta no permite finalizar la atención en su estado actual.',
+                    ], 409);
+                }
             }
 
-            $idOperadorAsignado = $this->obtenerOperadorAsignado(
-                $alerta->id_alerta
-            );
+            $alerta->cerrarSiAtencionConfirmada();
 
-            if ($idOperadorAsignado !== $personal->id_operador) {
-                return 'OTRO_OPERADOR';
-            }
-
-            $rutaEvidencia = SeguimientoAlerta::where('id_alerta', $alerta->id_alerta)
-                ->where('id_operador', $personal->id_operador)
-                ->where('accion', 'EVIDENCIA_POLICIAL')
-                ->value('evidencia_foto_path');
-
-            if (blank($rutaEvidencia) || !Storage::disk('local')->exists($rutaEvidencia)) {
-                return 'SIN_EVIDENCIA';
-            }
-
-            $alerta->estado = 'CERRADA';
-            $alerta->save();
-
-            SeguimientoAlerta::create([
-                'id_alerta' => $alerta->id_alerta,
-
-                'id_operador' => $personal->id_operador,
-
-                'accion' => 'CIERRE_ALERTA',
-
-                'observaciones' => $datos['observaciones'],
+            return response()->json([
+                'message' => $alerta->estado === 'CERRADA'
+                    ? 'Alerta cerrada correctamente.'
+                    : 'Atención finalizada. Falta la confirmación del ciudadano.',
+                'alerta' => [
+                    'id_alerta' => $alerta->id_alerta,
+                    'folio' => $alerta->folio,
+                    'estado' => $alerta->estado,
+                ],
             ]);
-
-            // El policía vuelve a estar disponible.
-            $personal->disponible = true;
-            $personal->save();
-
-            return $alerta;
         });
-
-        if ($resultado === 'NO_EXISTE') {
-            return response()->json([
-                'message' => 'La alerta no existe.',
-            ], 404);
-        }
-
-        if ($resultado === 'NO_ACEPTADA') {
-            return response()->json([
-                'message' => 'La alerta debe ser aceptada antes de cerrarse.',
-            ], 409);
-        }
-
-        if ($resultado === 'YA_CERRADA') {
-            return response()->json([
-                'message' => 'La alerta ya está cerrada.',
-            ], 409);
-        }
-
-        if ($resultado === 'OTRO_OPERADOR') {
-            return response()->json([
-                'message' => 'Esta alerta está asignada a otro operador.',
-            ], 403);
-        }
-
-        if ($resultado === 'SIN_EVIDENCIA') {
-            return response()->json([
-                'message' => 'Sube la foto de evidencia antes de finalizar la atención.',
-            ], 409);
-        }
-
-        if ($resultado === 'NO_EN_SITIO') {
-            return response()->json([
-                'message' => 'La alerta solo puede cerrarse cuando el policía haya llegado al sitio.',
-            ], 409);
-        }
-
-        $this->registrarAuditoria(
-            $request,
-            $personal,
-            'CERRAR_ALERTA',
-            $resultado->id_alerta
-        );
-
-        return response()->json([
-            'message' => 'Alerta cerrada correctamente.',
-
-            'alerta' => [
-                'id_alerta' => $resultado->id_alerta,
-
-                'folio' => $resultado->folio,
-
-                'estado' => $resultado->estado,
-            ],
-        ]);
     }
 
     // Consultar el historial de seguimiento de una alerta.

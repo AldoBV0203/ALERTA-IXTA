@@ -48,7 +48,7 @@ class SolicitudCancelacionController extends Controller
                     'NUEVA',
                     'EN_CAMINO',
                     'EN_SITIO',
-                ]);
+                ])->whereDoesntHave('confirmacionAtencionCiudadano');
             })
             ->orderBy('id')
             ->get();
@@ -161,6 +161,12 @@ class SolicitudCancelacionController extends Controller
                     'message' => 'Esta solicitud ya fue resuelta.',
                 ], 409);
             }
+
+            abort_if(
+                $alerta->confirmacionAtencionCiudadano()->exists(),
+                409,
+                'El ciudadano ya confirmó que recibió la atención.'
+            );
 
             // No reemplazar un código que todavía puede usar el ciudadano.
             if (
@@ -355,6 +361,12 @@ class SolicitudCancelacionController extends Controller
                 ], 409);
             }
 
+            abort_if(
+                $alerta->confirmacionAtencionCiudadano()->exists(),
+                409,
+                'El ciudadano ya confirmó que recibió la atención.'
+            );
+
             $solicitud = SolicitudCancelacion::where('id_alerta', $id)
                 ->where('id_usuario', $ciudadano->id)
                 ->orderByDesc('id')
@@ -495,6 +507,12 @@ class SolicitudCancelacionController extends Controller
                     'Esta alerta ya terminó y no admite solicitudes de cancelación.',
                 ], 409);
             }
+
+            abort_if(
+                $alerta->confirmacionAtencionCiudadano()->exists(),
+                409,
+                'El ciudadano ya confirmó que recibió la atención.'
+            );
 
             // Evitar varias solicitudes pendientes para la misma alerta.
             $pendiente = SolicitudCancelacion::where(

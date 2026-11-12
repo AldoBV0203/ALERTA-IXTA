@@ -369,6 +369,10 @@ class AlertaController extends Controller
             ->orderByDesc('id')
             ->first();
 
+        $atencionConfirmada = SeguimientoAlerta::where('id_alerta', $alerta->id_alerta)
+            ->where('accion', 'ATENCION_CONFIRMADA_CIUDADANO')
+            ->exists();
+
 
         return response()->json([
             'alerta' => [
@@ -376,6 +380,7 @@ class AlertaController extends Controller
                 'folio' => $alerta->folio,
                 'tipo' => $alerta->tipo?->nombre,
                 'estado' => $alerta->estado,
+                'atencion_confirmada' => $atencionConfirmada,
                 'prioridad' => $alerta->prioridad,
 
                 'ubicacion' => [
@@ -393,6 +398,58 @@ class AlertaController extends Controller
                 ] : null,
             ],
         ]);
+    }
+
+    public function confirmarAtencion(Request $request, int $id)
+    {
+        $usuario = $request->user();
+
+        if (!($usuario instanceof User) || $usuario->estatus !== 'ACTIVO') {
+            return response()->json([
+                'message' => 'Necesitas una cuenta de ciudadano activa.',
+            ], 403);
+        }
+
+        return DB::transaction(function () use ($id, $usuario) {
+            $alerta = Alerta::whereKey($id)
+                ->where('id_usuario', $usuario->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$alerta) {
+                return response()->json(['message' => 'La alerta no existe.'], 404);
+            }
+
+            $yaConfirmada = SeguimientoAlerta::where('id_alerta', $id)
+                ->where('accion', 'ATENCION_CONFIRMADA_CIUDADANO')
+                ->exists();
+
+            if (!$yaConfirmada) {
+                if (!in_array($alerta->estado, ['EN_SITIO', 'PENDIENTE_CONFIRMACION'], true)) {
+                    return response()->json([
+                        'message' => 'Esta alerta aún no permite confirmar la atención.',
+                    ], 409);
+                }
+
+                SeguimientoAlerta::create([
+                    'id_alerta' => $id,
+                    'id_operador' => null,
+                    'accion' => 'ATENCION_CONFIRMADA_CIUDADANO',
+                    'observaciones' => 'El ciudadano confirmó que recibió la atención.',
+                    'fecha_hora' => now(),
+                ]);
+            }
+
+            $alerta->cerrarSiAtencionConfirmada();
+
+            return response()->json([
+                'message' => $alerta->estado === 'CERRADA'
+                    ? 'Confirmación registrada. La alerta quedó cerrada.'
+                    : 'Confirmación registrada.',
+                'atencion_confirmada' => true,
+                'estado' => $alerta->estado,
+            ]);
+        });
     }
 
     // Cancelar una alerta creada por el ciudadano.
@@ -578,9 +635,9 @@ class AlertaController extends Controller
                 ], 404);
             }
 
-            if (in_array($alerta->estado, ['CERRADA', 'CANCELADA'], true)) {
+            if (!in_array($alerta->estado, ['NUEVA', 'EN_CAMINO', 'EN_SITIO'], true)) {
                 return response()->json([
-                    'message' => 'La alerta ya terminó.',
+                    'message' => 'La alerta ya no admite actualizaciones de ubicación.',
                 ], 409);
             }
 

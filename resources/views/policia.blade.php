@@ -2713,10 +2713,7 @@
                 mensaje.style.color =
                     '#235B4E';
 
-
-                mensaje.textContent =
-                    'Atención finalizada correctamente.';
-
+                mensaje.textContent = datos.message ?? 'Atención finalizada correctamente.';
 
                 /*
                  * Limpiar el servicio terminado.
