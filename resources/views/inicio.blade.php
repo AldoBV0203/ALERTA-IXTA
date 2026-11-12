@@ -483,6 +483,38 @@
             opacity: 0.6;
             cursor: not-allowed;
         }
+
+        #formReenviarIne {
+            margin-top: 12px;
+        }
+
+        #nuevaFotoIne {
+            background: white;
+        }
+
+        #nuevaFotoIne::file-selector-button {
+            margin-right: 8px;
+            padding: 7px 10px;
+            border: 1px solid var(--vino-principal);
+            border-radius: 6px;
+            background: white;
+            color: var(--vino-oscuro);
+            cursor: pointer;
+        }
+
+        #btnReenviarIne {
+            margin-top: 10px;
+            background: var(--vino-oscuro);
+        }
+
+        #btnReenviarIne:hover:not(:disabled) {
+            background: var(--vino-principal);
+        }
+
+        #btnReenviarIne:disabled {
+            opacity: 0.65;
+            cursor: wait;
+        }
     </style>
 
 </head>
@@ -714,6 +746,32 @@
                         <strong>Rol:</strong>
                         Ciudadano
                     </p>
+
+                    <div>
+                        <p>
+                            <strong>Verificación de identidad:</strong>
+                            <span id="estadoVerificacionCiudadano">Consultando...</span>
+                        </p>
+
+                        <p id="motivoRechazoIne" class="info" hidden></p>
+
+                        <form id="formReenviarIne" class="campo" onsubmit="reenviarFotoIne(event)" hidden>
+                            <label for="nuevaFotoIne">Nueva foto del INE</label>
+
+                            <input
+                                id="nuevaFotoIne"
+                                name="ine_foto"
+                                type="file"
+                                accept="image/jpeg,image/png"
+                                required>
+
+                            <button id="btnReenviarIne" type="submit" class="boton">
+                                Enviar otra foto
+                            </button>
+                        </form>
+
+                        <p id="mensajeReenvioIne" class="info" role="status"></p>
+                    </div>
 
                     <button
                         type="button"
@@ -1611,6 +1669,9 @@
 
             // Cambiar la pestaña activa.
             marcarPestanaCiudadano(seccion);
+            if (seccion === 'cuenta') {
+                cargarUsuario();
+            }
 
             if (seccion === 'inicio' || seccion === 'cuenta') {
 
@@ -1664,67 +1725,165 @@
 
         }
 
+        let consultaUsuario = null;
 
-        // Consultar ciudadano autenticado.
+        function actualizarUsuarioEnCuenta() {
+            const cuentaAbierta = document.getElementById('pantallaContenido')
+                .classList.contains('modo-cuenta');
+
+            if (cuentaAbierta && !document.hidden) {
+                cargarUsuario();
+            }
+        }
+
+        setInterval(actualizarUsuarioEnCuenta, 5000);
+        document.addEventListener('visibilitychange', actualizarUsuarioEnCuenta);
+
         async function cargarUsuario() {
+            const botonIne = document.getElementById('btnReenviarIne');
+
+            if (consultaUsuario || botonIne.disabled) {
+                return;
+            }
+
+            const consulta = new AbortController();
+            consultaUsuario = consulta;
 
             try {
+                const respuesta = await fetch(API + '/usuario', {
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Accept': 'application/json'
+                    },
+                    cache: 'no-store',
+                    signal: consulta.signal
+                });
 
-                const respuesta = await fetch(
-                    API + '/usuario', {
-                        headers: {
-                            'Authorization': 'Bearer ' + token,
-
-                            'Accept': 'application/json'
-                        }
-                    }
-                );
-
-
-                if (respuesta.status === 401) {
-
-                    sessionStorage.removeItem(
-                        'alerta_ixta_token'
-                    );
-
-                    window.location.href = '/';
-
+                if (consulta.signal.aborted) {
                     return;
                 }
 
-
-                const datos =
-                    await respuesta.json();
-
-
-                const usuario =
-                    datos.usuario ??
-                    datos.user ??
-                    datos;
-
-
-                if (usuario.name) {
-
-                    document
-                        .getElementById('saludo')
-                        .textContent =
-                        'Hola, ' + usuario.name;
-
-                    document
-                        .getElementById('nombreCuentaCiudadano')
-                        .textContent = usuario.name;
-
+                if (respuesta.status === 401) {
+                    sessionStorage.removeItem('alerta_ixta_token');
+                    window.location.href = '/';
+                    return;
                 }
 
+                if (!respuesta.ok) {
+                    console.warn('No se pudo consultar el usuario:', respuesta.status);
+                    return;
+                }
+
+                const datos = await respuesta.json();
+                const usuario = datos?.usuario ?? datos?.user ?? datos;
+                const estadoIdentidad = usuario?.estatus_verificacion;
+                const sinFotoIne = estadoIdentidad === 'PENDIENTE' && usuario.tiene_foto_ine === false;
+
+                const estadosIdentidad = {
+                    PENDIENTE: sinFotoIne ? 'INE sin subir' : 'Pendiente de revisión',
+                    VERIFICADA: 'Verificada',
+                    RECHAZADA: 'Foto rechazada'
+                };
+                const estadoNuevo = estadosIdentidad[estadoIdentidad];
+
+                if (consulta.signal.aborted || !estadoNuevo) {
+                    return;
+                }
+
+                const estadoEnPantalla = document.getElementById('estadoVerificacionCiudadano');
+
+                if (estadoEnPantalla.textContent.trim() !== estadoNuevo) {
+                    document.getElementById('mensajeReenvioIne').textContent = '';
+                    estadoEnPantalla.textContent = estadoNuevo;
+                }
+
+                const motivoIne = document.getElementById('motivoRechazoIne');
+                motivoIne.hidden = estadoIdentidad !== 'RECHAZADA' || !usuario.ine_motivo_rechazo;
+                motivoIne.textContent = motivoIne.hidden ? '' : 'Motivo: ' + usuario.ine_motivo_rechazo;
+
+                const formularioIne = document.getElementById('formReenviarIne');
+                formularioIne.hidden = !sinFotoIne && estadoIdentidad !== 'RECHAZADA';
+                formularioIne.querySelector('label').textContent =
+                    sinFotoIne ? 'Foto del INE' : 'Nueva foto del INE';
+
+                botonIne.textContent = sinFotoIne ? 'Subir foto' : 'Enviar otra foto';
+
+                if (usuario.name) {
+                    document.getElementById('saludo').textContent = 'Hola, ' + usuario.name;
+                    document.getElementById('nombreCuentaCiudadano').textContent = usuario.name;
+                }
             } catch (error) {
+                if (!consulta.signal.aborted) {
+                    console.error('Error al consultar usuario:', error);
+                }
+            } finally {
+                consultaUsuario = null;
+            }
+        }
 
-                console.error(
-                    'Error al consultar usuario:',
-                    error
-                );
+        async function reenviarFotoIne(evento) {
+            evento.preventDefault();
 
+            const formulario = evento.currentTarget;
+            const boton = document.getElementById('btnReenviarIne');
+            const mensaje = document.getElementById('mensajeReenvioIne');
+            const foto = document.getElementById('nuevaFotoIne').files[0];
+
+            if (boton.disabled || !foto) {
+                return;
             }
 
+            if (foto.size > 2 * 1024 * 1024) {
+                mensaje.style.color = '#9F2241';
+                mensaje.textContent = 'Selecciona una imagen JPG o PNG de hasta 2 MB.';
+                return;
+            }
+
+            boton.disabled = true;
+            consultaUsuario?.abort();
+            mensaje.style.color = '#252A30';
+            mensaje.textContent = 'Enviando foto...';
+
+            try {
+                const respuesta = await fetch(API + '/usuario/ine/reenviar', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Accept': 'application/json'
+                    },
+                    body: new FormData(formulario)
+                });
+
+                if (respuesta.status === 401) {
+                    sessionStorage.removeItem('alerta_ixta_token');
+                    window.location.href = '/';
+                    return;
+                }
+
+                const datos = await respuesta.json();
+
+                if (!respuesta.ok) {
+                    mensaje.style.color = '#9F2241';
+                    mensaje.textContent =
+                        datos.errors?.ine_foto?.[0] ??
+                        datos.message ??
+                        'No se pudo enviar la foto.';
+                    return;
+                }
+
+                formulario.reset();
+                formulario.hidden = true;
+                document.getElementById('estadoVerificacionCiudadano').textContent = 'Pendiente de revisión';
+                document.getElementById('motivoRechazoIne').hidden = true;
+
+                mensaje.style.color = '#235B4E';
+                mensaje.textContent = datos.message;
+            } catch (error) {
+                mensaje.style.color = '#9F2241';
+                mensaje.textContent = 'No fue posible conectar con el servidor.';
+            } finally {
+                boton.disabled = false;
+            }
         }
 
 

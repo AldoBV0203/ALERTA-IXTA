@@ -22,5 +22,5 @@ Route::view('/policia','policia')->name('policia');
 
 Route::view(
     '/monitoreo',
-    'monitoreo'
+    'monitoreo.index'
 )->name('monitoreo');

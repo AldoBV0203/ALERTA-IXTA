@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\PersonalAuthController;
 use App\Http\Controllers\Api\MonitoreoController;
 use App\Http\Controllers\Api\PoliciaController;
 use App\Http\Controllers\Api\SolicitudCancelacionController;
+use App\Http\Controllers\Api\VerificacionIdentidadController;
 
 
 //Rutas públicas
@@ -30,6 +31,11 @@ Route::middleware('auth:sanctum')->group(function () {
         'usuario'
     ]);
 
+    Route::post('/usuario/ine/reenviar', [
+        AuthController::class,
+        'reenviarIne',
+    ]);
+
     Route::post('/logout', [
         AuthController::class,
         'logout'
@@ -49,6 +55,21 @@ Route::middleware('auth:sanctum')->group(function () {
         AlertaController::class,
         'misAlertas'
     ]);
+
+    Route::get('/monitoreo/verificaciones-identidad', [
+        VerificacionIdentidadController::class,
+        'pendientes',
+    ]);
+
+    Route::get('/monitoreo/verificaciones-identidad/{id}/foto', [
+        VerificacionIdentidadController::class,
+        'foto',
+    ])->whereNumber('id');
+
+    Route::post('/monitoreo/verificaciones-identidad/{id}/resolver', [
+        VerificacionIdentidadController::class,
+        'resolver',
+    ])->whereNumber('id');
 
     Route::get('/monitoreo/solicitudes-cancelacion', [
         SolicitudCancelacionController::class,

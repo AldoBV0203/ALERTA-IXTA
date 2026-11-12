@@ -81,6 +81,7 @@
 
                 <form
                     method="POST"
+                    enctype="multipart/form-data"
                     action="{{ route('registro.store') }}">
 
                     @csrf
@@ -222,6 +223,22 @@
 
                     </div>
 
+                    <div class="campo">
+                        <label for="ine_foto">Foto del INE</label>
+
+                        <input
+                            id="ine_foto"
+                            name="ine_foto"
+                            type="file"
+                            accept="image/jpeg,image/png"
+                            required>
+
+                        <small>Selecciona una imagen JPG o PNG de hasta 2 MB.</small>
+
+                        @error('ine_foto')
+                        <small class="error">{{ $message }}</small>
+                        @enderror
+                    </div>
 
                     <button
                         type="submit"

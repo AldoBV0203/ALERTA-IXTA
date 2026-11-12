@@ -55,6 +55,12 @@
 
                 <h2>Iniciar sesión</h2>
 
+                @if (session('success'))
+                <p role="status" style="color: #235B4E;">
+                    {{ session('success') }}
+                </p>
+                @endif
+
                 <div class="campo">
                     <label>CURP</label>
 

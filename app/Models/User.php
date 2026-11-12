@@ -26,6 +26,7 @@ class User extends Authenticatable
         'estatus_verificacion',
         'telefono_verificado_at',
         'identidad_verificada_at',
+        'ine_foto_path',
     ];
 
     
@@ -35,6 +36,7 @@ class User extends Authenticatable
         'password',
         'remember_token',
         'curp_lookup',
+        'ine_foto_path',
     ];
 
     

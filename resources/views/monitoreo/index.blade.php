@@ -410,6 +410,17 @@
                 rgba(255, 255, 255, .85);
         }
 
+        button.menu-opcion {
+            display: block;
+            width: 100%;
+            border: 0;
+            border-left: 4px solid transparent;
+            background: transparent;
+            text-align: left;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
 
         .menu-opcion.activa {
             background: var(--vino-claro);
@@ -1121,9 +1132,21 @@
             </div>
 
 
-            <div class="menu-opcion activa">
+            <button
+                type="button"
+                id="menuPanelGeneral"
+                class="menu-opcion activa"
+                onclick="mostrarSeccionMonitoreo('general')">
                 Panel general
-            </div>
+            </button>
+
+            <button
+                type="button"
+                id="menuVerificacionIdentidad"
+                class="menu-opcion"
+                onclick="mostrarSeccionMonitoreo('identidad')">
+                Verificación de identidad
+            </button>
 
 
             <div class="menu-opcion">
@@ -1222,336 +1245,340 @@
         <!-- CONTENIDO -->
 
         <main class="contenido">
+            <div id="panelGeneralMonitoreo">
 
 
-            <div class="titulo-pagina">
+                <div class="titulo-pagina">
 
-                <h2>
-                    Panel general de operaciones
-                </h2>
+                    <h2>
+                        Panel general de operaciones
+                    </h2>
 
-                <p>
-                    Supervisión y seguimiento de alertas ciudadanas en tiempo real.
-                </p>
+                    <p>
+                        Supervisión y seguimiento de alertas ciudadanas en tiempo real.
+                    </p>
+
+                </div>
+
+
+
+                <!-- INDICADORES -->
+
+                <section class="indicadores">
+
+
+                    <div class="indicador">
+
+                        <div
+                            class="
+                        indicador-linea
+                        linea-total">
+                        </div>
+
+                        <div class="indicador-label">
+                            Total de alertas
+                        </div>
+
+                        <div
+                            class="indicador-numero"
+                            id="totalAlertas">
+
+                            0
+
+                        </div>
+
+                    </div>
+
+
+
+                    <div class="indicador">
+
+                        <div
+                            class="
+                        indicador-linea
+                        linea-nueva">
+                        </div>
+
+                        <div class="indicador-label">
+                            Alertas nuevas
+                        </div>
+
+                        <div
+                            class="indicador-numero"
+                            id="totalNuevas">
+
+                            0
+
+                        </div>
+
+                    </div>
+
+
+
+                    <div class="indicador">
+
+                        <div
+                            class="
+                        indicador-linea
+                        linea-atencion">
+                        </div>
+
+                        <div class="indicador-label">
+                            En atención
+                        </div>
+
+                        <div
+                            class="indicador-numero"
+                            id="totalAtencion">
+
+                            0
+
+                        </div>
+
+                    </div>
+
+
+
+                    <div class="indicador">
+
+                        <div
+                            class="
+                        indicador-linea
+                        linea-cerrada">
+                        </div>
+
+                        <div class="indicador-label">
+                            Alertas cerradas
+                        </div>
+
+                        <div
+                            class="indicador-numero"
+                            id="totalCerradas">
+
+                            0
+
+                        </div>
+
+                    </div>
+
+
+                </section>
+
+
+
+                <!-- MAPA Y ALERTAS ACTIVAS -->
+
+                <section class="operacion-principal">
+
+
+                    <!-- MAPA -->
+
+                    <div class="panel mapa-panel">
+
+                        <div class="panel-encabezado">
+
+                            <h3>
+                                Mapa general de operaciones
+                            </h3>
+
+                            <span id="ultimaActualizacion">
+                                Sin actualizar
+                            </span>
+
+                        </div>
+
+                        <div id="mapaMonitoreo"></div>
+
+                    </div>
+
+
+                    <!-- ALERTAS ACTIVAS -->
+
+                    <div class="panel panel-alertas-activas">
+
+                        <div class="panel-encabezado">
+
+                            <h3>
+                                Alertas activas
+                            </h3>
+
+                            <span id="cantidadAlertasActivas">
+                                0
+                            </span>
+
+                        </div>
+
+
+                        <div id="listaAlertasActivas">
+
+                            <div class="sin-alertas-activas">
+                                No existen alertas activas.
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                </section>
+
+                <!-- SOLICITUDES DE CANCELACIÓN -->
+
+                <section
+                    id="panelSolicitudesCancelacion"
+                    class="panel"
+                    style="margin-bottom: 20px;">
+
+                    <div class="panel-encabezado">
+                        <h3>Solicitudes de cancelación</h3>
+
+                        <span id="cantidadSolicitudesCancelacion">
+                            Sin consultar
+                        </span>
+                    </div>
+
+                    <div class="tabla-contenedor">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Folio</th>
+                                    <th>Ciudadano</th>
+                                    <th>Teléfono</th>
+                                    <th>Motivo</th>
+                                    <th>Estado de solicitud</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="tablaSolicitudesCancelacion">
+                                <tr>
+                                    <td colspan="6">
+                                        Las solicitudes aparecerán aquí.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p
+                        id="mensajeCodigoCancelacion"
+                        class="detalle-contenido"
+                        style="white-space: pre-wrap;"
+                        role="status"></p>
+
+                    <p
+                        id="mensajeRechazoCancelacion"
+                        style="margin: 0 16px;"
+                        role="status"></p>
+
+                </section>
+
+
+                <!-- PARTE INFERIOR -->
+
+                <section class="seccion-inferior">
+
+
+                    <!-- TABLA -->
+
+                    <div class="panel">
+
+                        <div class="panel-encabezado">
+
+                            <h3>
+                                Registro reciente
+                            </h3>
+
+                            <span>
+                                Seleccione una alerta para consultar su detalle
+                            </span>
+
+                        </div>
+
+
+                        <div class="tabla-contenedor">
+
+                            <table>
+
+                                <thead>
+
+                                    <tr>
+
+                                        <th>
+                                            Folio
+                                        </th>
+
+                                        <th>
+                                            Tipo
+                                        </th>
+
+                                        <th>
+                                            Estado
+                                        </th>
+
+                                        <th>
+                                            Prioridad
+                                        </th>
+
+                                    </tr>
+
+                                </thead>
+
+
+                                <tbody id="tablaAlertas">
+
+                                    <tr>
+
+                                        <td colspan="4">
+                                            Cargando información...
+                                        </td>
+
+                                    </tr>
+
+                                </tbody>
+
+                            </table>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- DETALLE -->
+
+                    <div class="panel">
+
+                        <div class="panel-encabezado">
+
+                            <h3>
+                                Detalle de la alerta
+                            </h3>
+
+                        </div>
+
+
+                        <div
+                            class="detalle-contenido"
+                            id="detalleAlerta">
+
+
+                            <div class="sin-seleccion">
+
+                                Seleccione una alerta de la tabla.
+
+                            </div>
+
+
+                        </div>
+
+                    </div>
+
+
+                </section>
 
             </div>
 
-
-
-            <!-- INDICADORES -->
-
-            <section class="indicadores">
-
-
-                <div class="indicador">
-
-                    <div
-                        class="
-                        indicador-linea
-                        linea-total">
-                    </div>
-
-                    <div class="indicador-label">
-                        Total de alertas
-                    </div>
-
-                    <div
-                        class="indicador-numero"
-                        id="totalAlertas">
-
-                        0
-
-                    </div>
-
-                </div>
-
-
-
-                <div class="indicador">
-
-                    <div
-                        class="
-                        indicador-linea
-                        linea-nueva">
-                    </div>
-
-                    <div class="indicador-label">
-                        Alertas nuevas
-                    </div>
-
-                    <div
-                        class="indicador-numero"
-                        id="totalNuevas">
-
-                        0
-
-                    </div>
-
-                </div>
-
-
-
-                <div class="indicador">
-
-                    <div
-                        class="
-                        indicador-linea
-                        linea-atencion">
-                    </div>
-
-                    <div class="indicador-label">
-                        En atención
-                    </div>
-
-                    <div
-                        class="indicador-numero"
-                        id="totalAtencion">
-
-                        0
-
-                    </div>
-
-                </div>
-
-
-
-                <div class="indicador">
-
-                    <div
-                        class="
-                        indicador-linea
-                        linea-cerrada">
-                    </div>
-
-                    <div class="indicador-label">
-                        Alertas cerradas
-                    </div>
-
-                    <div
-                        class="indicador-numero"
-                        id="totalCerradas">
-
-                        0
-
-                    </div>
-
-                </div>
-
-
-            </section>
-
-
-
-            <!-- MAPA Y ALERTAS ACTIVAS -->
-
-            <section class="operacion-principal">
-
-
-                <!-- MAPA -->
-
-                <div class="panel mapa-panel">
-
-                    <div class="panel-encabezado">
-
-                        <h3>
-                            Mapa general de operaciones
-                        </h3>
-
-                        <span id="ultimaActualizacion">
-                            Sin actualizar
-                        </span>
-
-                    </div>
-
-                    <div id="mapaMonitoreo"></div>
-
-                </div>
-
-
-                <!-- ALERTAS ACTIVAS -->
-
-                <div class="panel panel-alertas-activas">
-
-                    <div class="panel-encabezado">
-
-                        <h3>
-                            Alertas activas
-                        </h3>
-
-                        <span id="cantidadAlertasActivas">
-                            0
-                        </span>
-
-                    </div>
-
-
-                    <div id="listaAlertasActivas">
-
-                        <div class="sin-alertas-activas">
-                            No existen alertas activas.
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-            </section>
-
-            <!-- SOLICITUDES DE CANCELACIÓN -->
-
-            <section
-                id="panelSolicitudesCancelacion"
-                class="panel"
-                style="margin-bottom: 20px;">
-
-                <div class="panel-encabezado">
-                    <h3>Solicitudes de cancelación</h3>
-
-                    <span id="cantidadSolicitudesCancelacion">
-                        Sin consultar
-                    </span>
-                </div>
-
-                <div class="tabla-contenedor">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Folio</th>
-                                <th>Ciudadano</th>
-                                <th>Teléfono</th>
-                                <th>Motivo</th>
-                                <th>Estado de solicitud</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-
-                        <tbody id="tablaSolicitudesCancelacion">
-                            <tr>
-                                <td colspan="6">
-                                    Las solicitudes aparecerán aquí.
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <p
-                    id="mensajeCodigoCancelacion"
-                    class="detalle-contenido"
-                    style="white-space: pre-wrap;"
-                    role="status"></p>
-
-                <p
-                    id="mensajeRechazoCancelacion"
-                    style="margin: 0 16px;"
-                    role="status"></p>
-
-            </section>
-
-
-            <!-- PARTE INFERIOR -->
-
-            <section class="seccion-inferior">
-
-
-                <!-- TABLA -->
-
-                <div class="panel">
-
-                    <div class="panel-encabezado">
-
-                        <h3>
-                            Registro reciente
-                        </h3>
-
-                        <span>
-                            Seleccione una alerta para consultar su detalle
-                        </span>
-
-                    </div>
-
-
-                    <div class="tabla-contenedor">
-
-                        <table>
-
-                            <thead>
-
-                                <tr>
-
-                                    <th>
-                                        Folio
-                                    </th>
-
-                                    <th>
-                                        Tipo
-                                    </th>
-
-                                    <th>
-                                        Estado
-                                    </th>
-
-                                    <th>
-                                        Prioridad
-                                    </th>
-
-                                </tr>
-
-                            </thead>
-
-
-                            <tbody id="tablaAlertas">
-
-                                <tr>
-
-                                    <td colspan="4">
-                                        Cargando información...
-                                    </td>
-
-                                </tr>
-
-                            </tbody>
-
-                        </table>
-
-                    </div>
-
-                </div>
-
-
-
-                <!-- DETALLE -->
-
-                <div class="panel">
-
-                    <div class="panel-encabezado">
-
-                        <h3>
-                            Detalle de la alerta
-                        </h3>
-
-                    </div>
-
-
-                    <div
-                        class="detalle-contenido"
-                        id="detalleAlerta">
-
-
-                        <div class="sin-seleccion">
-
-                            Seleccione una alerta de la tabla.
-
-                        </div>
-
-
-                    </div>
-
-                </div>
-
-
-            </section>
-
+            @include('monitoreo.verificacion-identidad')
 
         </main>
 
