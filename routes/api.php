@@ -121,6 +121,11 @@ Route::middleware('auth:sanctum')->group(function () {
         'seguimiento'
     ]);
 
+    Route::post('/monitoreo/alertas/{id}/evidencia', [
+        MonitoreoController::class,
+        'guardarEvidenciaPolicial',
+    ])->whereNumber('id');
+
     Route::post('/monitoreo/alertas/{id}/cerrar', [
         MonitoreoController::class,
         'cerrar'

@@ -349,6 +349,30 @@
                                     </span>
                                 </p>
 
+                                <form id="formEvidenciaPolicial" onsubmit="subirEvidenciaPolicial(event)" hidden>
+                                    <div class="campo">
+                                        <label for="fotoEvidenciaPolicial">Foto de evidencia</label>
+                                        <input
+                                            id="fotoEvidenciaPolicial"
+                                            name="evidencia_foto"
+                                            type="file"
+                                            accept="image/jpeg,image/png"
+                                            aria-describedby="ayudaEvidenciaPolicial"
+                                            required>
+                                        <small id="ayudaEvidenciaPolicial">JPG o PNG de hasta 2 MB.</small>
+                                    </div>
+
+                                    <button type="submit" id="btnSubirEvidenciaPolicial" class="boton btn-finalizar">
+                                        Subir evidencia
+                                    </button>
+
+                                    <p id="mensajeCargaEvidencia" class="info" role="status"></p>
+                                </form>
+
+                                <p id="evidenciaGuardadaPolicial" class="info" role="status" hidden>
+                                    Evidencia guardada.
+                                </p>
+
                                 <button
                                     type="button"
                                     id="btnFinalizar"
@@ -1005,137 +1029,82 @@
             }
         }
 
+        let ultimaConsultaServicio = 0;
+
+        function mostrarControlesEvidencia(servicio) {
+            const enSitio = servicio?.estado === 'EN_SITIO';
+            const tieneEvidencia = enSitio && servicio.tiene_evidencia === true;
+
+            document.getElementById('formEvidenciaPolicial').hidden = !enSitio || tieneEvidencia;
+            document.getElementById('evidenciaGuardadaPolicial').hidden = !tieneEvidencia;
+            document.getElementById('btnFinalizar').style.display = tieneEvidencia ? 'block' : 'none';
+        }
+
         async function cargarServicioActual() {
+            if (operacionPoliciaEnCurso) {
+                return;
+            }
+
+            const consulta = ++ultimaConsultaServicio;
+            const idAlConsultar = idServicioActual;
 
             try {
-
-                const respuesta = await fetch(
-                    API + '/policia/servicio-actual', {
-                        headers: {
-                            'Authorization': 'Bearer ' +
-                                tokenPolicia,
-
-                            'Accept': 'application/json'
-                        }
-                    }
-                );
-
-
-                const datos =
-                    await respuesta.json();
-
+                const respuesta = await fetch(API + '/policia/servicio-actual', {
+                    headers: {
+                        'Authorization': 'Bearer ' + tokenPolicia,
+                        'Accept': 'application/json'
+                    },
+                    cache: 'no-store'
+                });
 
                 if (!respuesta.ok) {
                     return;
                 }
 
-                if (!datos.servicio) {
+                const {
+                    servicio
+                } = await respuesta.json();
 
-                    idServicioActual = null;
-
-                    actualizarDisponibilidadVisual();
-
-                    document
-                        .getElementById(
-                            'servicioActual'
-                        )
-                        .classList
-                        .add('oculto');
-
+                if (
+                    consulta !== ultimaConsultaServicio ||
+                    operacionPoliciaEnCurso ||
+                    idAlConsultar !== idServicioActual
+                ) {
                     return;
                 }
 
+                const idNuevo = servicio?.id_alerta ?? null;
 
-                const servicio =
-                    datos.servicio;
+                if (idNuevo !== idServicioActual) {
+                    document.getElementById('formEvidenciaPolicial').reset();
+                    document.getElementById('mensajeCargaEvidencia').textContent = '';
+                }
 
-
-                idServicioActual =
-                    servicio.id_alerta;
-
+                idServicioActual = idNuevo;
                 actualizarDisponibilidadVisual();
 
-                document
-                    .getElementById(
-                        'servicioActual'
-                    )
-                    .classList
-                    .remove('oculto');
+                document.getElementById('servicioActual')
+                    .classList.toggle('oculto', !servicio);
 
+                mostrarControlesEvidencia(servicio);
 
-                document
-                    .getElementById(
-                        'folioServicio'
-                    )
-                    .textContent =
-                    servicio.folio;
-
-
-                document
-                    .getElementById(
-                        'tipoServicio'
-                    )
-                    .textContent =
-                    servicio.tipo;
-
-
-                document
-                    .getElementById(
-                        'estadoServicio'
-                    )
-                    .textContent =
-                    servicio.estado;
-
-                const btnFinalizar =
-                    document.getElementById(
-                        'btnFinalizar'
-                    );
-
-
-                if (
-                    servicio.estado ===
-                    'EN_SITIO'
-                ) {
-
-                    btnFinalizar.style.display =
-                        'block';
-
-                } else {
-
-                    btnFinalizar.style.display =
-                        'none';
-
+                if (!servicio) {
+                    return;
                 }
 
+                document.getElementById('folioServicio').textContent = servicio.folio;
+                document.getElementById('tipoServicio').textContent = servicio.tipo;
+                document.getElementById('estadoServicio').textContent = servicio.estado;
 
-                if (
-                    servicio.ubicacion &&
-                    servicio.ubicacion.latitud &&
-                    servicio.ubicacion.longitud
-                ) {
-
+                if (servicio.ubicacion?.latitud && servicio.ubicacion?.longitud) {
                     mostrarDestinoEnMapa(
-                        parseFloat(
-                            servicio.ubicacion.latitud
-                        ),
-
-                        parseFloat(
-                            servicio.ubicacion.longitud
-                        )
+                        parseFloat(servicio.ubicacion.latitud),
+                        parseFloat(servicio.ubicacion.longitud)
                     );
-
                 }
-
-
             } catch (error) {
-
-                console.error(
-                    'Error al cargar servicio:',
-                    error
-                );
-
+                console.error('Error al cargar servicio:', error);
             }
-
         }
 
         function mostrarDestinoEnMapa(
@@ -2568,6 +2537,73 @@
 
             }
 
+        }
+
+        async function subirEvidenciaPolicial(evento) {
+            evento.preventDefault();
+
+            const idAlerta = idServicioActual;
+            const formulario = evento.currentTarget;
+            const campoFoto = document.getElementById('fotoEvidenciaPolicial');
+            const boton = document.getElementById('btnSubirEvidenciaPolicial');
+            const mensaje = document.getElementById('mensajeCargaEvidencia');
+            const foto = campoFoto.files[0];
+
+            if (!idAlerta || operacionPoliciaEnCurso || !foto) {
+                return;
+            }
+
+            if (foto.size > 2 * 1024 * 1024) {
+                mensaje.style.color = '#9F2241';
+                mensaje.textContent = 'Selecciona una foto de hasta 2 MB.';
+                return;
+            }
+
+            const datosFoto = new FormData(formulario);
+            operacionPoliciaEnCurso = true;
+            ultimaConsultaServicio++;
+            campoFoto.disabled = true;
+            boton.disabled = true;
+            mensaje.style.color = '#252A30';
+            mensaje.textContent = 'Subiendo evidencia...';
+
+            try {
+                const respuesta = await fetch(API + '/monitoreo/alertas/' + idAlerta + '/evidencia', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + tokenPolicia,
+                        'Accept': 'application/json'
+                    },
+                    body: datosFoto
+                });
+
+                const datos = await respuesta.json();
+
+                if (!respuesta.ok) {
+                    mensaje.style.color = '#9F2241';
+                    mensaje.textContent = datos.errors?.evidencia_foto?.[0] ??
+                        datos.message ??
+                        'No se pudo subir la evidencia.';
+                    return;
+                }
+
+                formulario.reset();
+                mensaje.textContent = '';
+
+                if (idServicioActual === idAlerta) {
+                    mostrarControlesEvidencia({
+                        estado: 'EN_SITIO',
+                        tiene_evidencia: true
+                    });
+                }
+            } catch (error) {
+                mensaje.style.color = '#9F2241';
+                mensaje.textContent = 'No fue posible subir la evidencia. Intenta nuevamente.';
+            } finally {
+                campoFoto.disabled = false;
+                boton.disabled = false;
+                operacionPoliciaEnCurso = false;
+            }
         }
 
         async function finalizarAtencion() {

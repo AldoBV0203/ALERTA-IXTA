@@ -17,7 +17,12 @@ class SeguimientoAlerta extends Model
         'id_operador',
         'accion',
         'observaciones',
+        'evidencia_foto_path',
         'fecha_hora',
+    ];
+
+    protected $hidden = [
+        'evidencia_foto_path',
     ];
 
     protected function casts(): array

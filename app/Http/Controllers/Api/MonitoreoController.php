@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Auditoria;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 
 class MonitoreoController extends Controller
 {
@@ -740,6 +741,89 @@ class MonitoreoController extends Controller
         ], 201);
     }
 
+    public function guardarEvidenciaPolicial(Request $request, int $id)
+    {
+        $personal = $request->user();
+
+        if (
+            !$personal instanceof Operador ||
+            !$personal->activo ||
+            $personal->rol !== 'POLICIA'
+        ) {
+            return response()->json([
+                'message' => 'No tienes permiso para subir evidencia.',
+            ], 403);
+        }
+
+        $datos = $request->validate([
+            'evidencia_foto' => 'required|image|mimes:jpg,jpeg,png|max:2048',
+        ], [
+            'evidencia_foto.required' => 'Selecciona una foto de evidencia.',
+            'evidencia_foto.image' => 'Selecciona una imagen válida.',
+            'evidencia_foto.mimes' => 'La foto debe ser JPG o PNG.',
+            'evidencia_foto.max' => 'La foto debe pesar como máximo 2 MB.',
+        ]);
+
+        $foto = $datos['evidencia_foto'];
+        $disco = Storage::disk('local');
+        $rutaNueva = null;
+
+        try {
+            return DB::transaction(function () use ($id, $personal, $foto, $disco, &$rutaNueva) {
+                $alerta = Alerta::whereKey($id)->lockForUpdate()->first();
+
+                if (!$alerta) {
+                    return response()->json(['message' => 'La alerta no existe.'], 404);
+                }
+
+                if ($this->obtenerOperadorAsignado($id) !== (int) $personal->id_operador) {
+                    return response()->json([
+                        'message' => 'Esta alerta no está asignada a tu cuenta.',
+                    ], 403);
+                }
+
+                if ($alerta->estado !== 'EN_SITIO') {
+                    return response()->json([
+                        'message' => 'Solo puedes subir evidencia cuando la alerta esté en sitio.',
+                    ], 409);
+                }
+
+                $evidencia = SeguimientoAlerta::firstOrNew([
+                    'id_alerta' => $id,
+                    'id_operador' => $personal->id_operador,
+                    'accion' => 'EVIDENCIA_POLICIAL',
+                ]);
+
+                if ($evidencia->evidencia_foto_path && $disco->exists($evidencia->evidencia_foto_path)) {
+                    return response()->json(['message' => 'Evidencia guardada.']);
+                }
+
+                $rutaNueva = $foto->store('evidencias-alertas', 'local');
+
+                if ($rutaNueva === false) {
+                    throw new \RuntimeException('No se pudo guardar la foto de evidencia.');
+                }
+
+                $evidencia->evidencia_foto_path = $rutaNueva;
+                $evidencia->observaciones = 'El policía guardó una foto de evidencia.';
+                $evidencia->fecha_hora = now();
+                $evidencia->save();
+
+                return response()->json(['message' => 'Evidencia guardada.'], 201);
+            });
+        } catch (\Throwable $error) {
+            if ($rutaNueva) {
+                $disco->delete($rutaNueva);
+            }
+
+            report($error);
+
+            return response()->json([
+                'message' => 'No fue posible guardar la evidencia. Intenta nuevamente.',
+            ], 500);
+        }
+    }
+
     // Cerrar una alerta.
 
     public function cerrar(Request $request, int $id)
@@ -801,6 +885,15 @@ class MonitoreoController extends Controller
                 return 'OTRO_OPERADOR';
             }
 
+            $rutaEvidencia = SeguimientoAlerta::where('id_alerta', $alerta->id_alerta)
+                ->where('id_operador', $personal->id_operador)
+                ->where('accion', 'EVIDENCIA_POLICIAL')
+                ->value('evidencia_foto_path');
+
+            if (blank($rutaEvidencia) || !Storage::disk('local')->exists($rutaEvidencia)) {
+                return 'SIN_EVIDENCIA';
+            }
+
             $alerta->estado = 'CERRADA';
             $alerta->save();
 
@@ -843,6 +936,12 @@ class MonitoreoController extends Controller
             return response()->json([
                 'message' => 'Esta alerta está asignada a otro operador.',
             ], 403);
+        }
+
+        if ($resultado === 'SIN_EVIDENCIA') {
+            return response()->json([
+                'message' => 'Sube la foto de evidencia antes de finalizar la atención.',
+            ], 409);
         }
 
         if ($resultado === 'NO_EN_SITIO') {

@@ -9,6 +9,7 @@ use App\Models\SeguimientoAlerta;
 use App\Models\UbicacionAlerta;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class PoliciaController extends Controller
 {
@@ -241,7 +242,7 @@ class PoliciaController extends Controller
             )
             ->first();
 
-            
+
         if (!$alerta) {
             return response()->json([
                 'servicio' => null,
@@ -269,6 +270,14 @@ class PoliciaController extends Controller
             ? $ultimaUbicacion->longitud
             : $alerta->longitud;
 
+        $rutaEvidencia = SeguimientoAlerta::where('id_alerta', $alerta->id_alerta)
+            ->where('id_operador', $personal->id_operador)
+            ->where('accion', 'EVIDENCIA_POLICIAL')
+            ->value('evidencia_foto_path');
+
+        $tieneEvidencia = filled($rutaEvidencia)
+            && Storage::disk('local')->exists($rutaEvidencia);
+
         return response()->json([
             'servicio' => [
                 'id_alerta' =>
@@ -282,6 +291,7 @@ class PoliciaController extends Controller
 
                 'estado' =>
                 $alerta->estado,
+                'tiene_evidencia' => $tieneEvidencia,
 
                 'prioridad' =>
                 $alerta->prioridad,
