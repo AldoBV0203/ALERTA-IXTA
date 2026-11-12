@@ -98,28 +98,6 @@
             pointer-events: none;
         }
 
-        .sos::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            border-radius: 50%;
-            background: #ef5350;
-            transform: scale(0);
-            opacity: 0;
-            pointer-events: none;
-            z-index: 1;
-        }
-
-        .sos-presionando::before {
-            opacity: 1;
-            animation: llenarBotonSOS 3s linear forwards;
-        }
-
-        .sos-completado::before {
-            opacity: 1;
-            transform: scale(1);
-        }
-
         .sos-completado::after {
             content: '';
             position: absolute;
@@ -176,16 +154,6 @@
 
             to {
                 stroke-dashoffset: 0;
-            }
-        }
-
-        @keyframes llenarBotonSOS {
-            from {
-                transform: scale(0);
-            }
-
-            to {
-                transform: scale(1);
             }
         }
 

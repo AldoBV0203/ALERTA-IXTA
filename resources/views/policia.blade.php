@@ -140,7 +140,7 @@
 
         /* Aviso visible cuando existe una oferta policial pendiente. */
         .aviso-oferta-policia {
-            display: flex;
+            display: none;
             align-items: center;
             justify-content: space-between;
             gap: 10px;
@@ -195,6 +195,97 @@
         .indicador-disponibilidad.en-servicio {
             background: #FFF2DD;
             color: #956014;
+        }
+
+        :root {
+            --azul-rey: #214EBD;
+            --azul-marino: #102653;
+            --azul-claro: #EDF3FF;
+            --azul-borde: #B8CBF1;
+        }
+
+        body {
+            background: #F2F6FF;
+        }
+
+        .app-cabecera {
+            background: var(--azul-marino);
+        }
+
+        .app-contenido h2,
+        .app-contenido h3 {
+            color: var(--azul-marino);
+        }
+
+        .boton,
+        .contador-alertas,
+        .marcador-policia {
+            background: var(--azul-rey);
+        }
+
+        .btn-finalizar,
+        .aviso-oferta-policia button {
+            background: var(--azul-marino);
+        }
+
+        .estado-policia,
+        .alerta-policia,
+        .boton-secundario,
+        .btn-rechazar,
+        .aviso-oferta-policia,
+        .indicador-disponibilidad.disponible {
+            background: var(--azul-claro);
+            color: var(--azul-marino);
+        }
+
+        .boton-secundario,
+        .btn-rechazar {
+            box-shadow: inset 0 0 0 1px var(--azul-borde);
+        }
+
+        .alerta-policia:hover,
+        .indicador-disponibilidad.en-servicio {
+            background: #DCE8FF;
+            color: var(--azul-marino);
+        }
+
+        .alerta-seleccionada {
+            border-left-color: var(--azul-rey);
+        }
+
+        .aviso-oferta-policia {
+            border-top-color: var(--azul-rey);
+        }
+
+        .aviso-oferta-texto {
+            color: var(--azul-marino);
+        }
+
+        #navPolicia button.activo {
+            color: var(--azul-rey);
+        }
+
+        #navPolicia button.activo::after {
+            background: var(--azul-rey);
+        }
+
+        #navPolicia button:active {
+            background: var(--azul-claro);
+        }
+
+        body,
+        .app-contenido h2,
+        .app-contenido h3,
+        .app-contenido .info,
+        .estado-policia,
+        .alerta-policia,
+        .boton-secundario,
+        .btn-rechazar,
+        .indicador-disponibilidad.disponible,
+        .indicador-disponibilidad.en-servicio,
+        #navPolicia button,
+        #navPolicia button.activo {
+            color: #000;
         }
     </style>
 
@@ -491,7 +582,7 @@
                         <button
                             type="button"
                             class="boton"
-                            style="background: #691C32; margin-top: 20px;"
+                            style="background: var(--azul-marino); margin-top: 20px;"
                             onclick="cerrarSesionPolicia()">
                             Cerrar sesión
                         </button>
