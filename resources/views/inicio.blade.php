@@ -985,17 +985,18 @@
                             onsubmit="reenviarFotoIne(event)"
                             hidden>
 
-                            <label for="nuevaFotoIne">Nueva foto del INE</label>
+                            @include('componentes.selector-foto', [
+                            'idCampoFoto' => 'nuevaFotoIne',
+                            'nombreCampoFoto' => 'ine_foto',
+                            'etiquetaFoto' => 'Nueva foto del INE',
+                            ])
 
-                            <input
-                                id="nuevaFotoIne"
-                                name="ine_foto"
-                                type="file"
-                                accept="image/jpeg,image/png"
-                                required>
-
-                            <button id="btnReenviarIne" type="submit" class="boton">
-                                Enviar otra foto
+                            <button
+                                id="btnReenviarIne"
+                                type="submit"
+                                class="boton"
+                                style="display: none;">
+                                Enviar
                             </button>
                         </form>
 
@@ -2182,7 +2183,7 @@
                 formularioIne.querySelector('label').textContent =
                     sinFotoIne ? 'Foto del INE' : 'Nueva foto del INE';
 
-                botonIne.textContent = sinFotoIne ? 'Subir foto' : 'Enviar otra foto';
+                actualizarBotonEnvioIne();
 
                 if (usuario.name) {
                     document.getElementById('saludo').textContent = 'Hola, ' + usuario.name;
@@ -2196,6 +2197,22 @@
                 consultaUsuario = null;
             }
         }
+
+        function actualizarBotonEnvioIne() {
+            const foto = document.getElementById('nuevaFotoIne').files[0];
+            const boton = document.getElementById('btnReenviarIne');
+
+            boton.textContent = 'Enviar';
+            boton.style.display = foto ? 'block' : 'none';
+        }
+
+        document.getElementById('formReenviarIne')
+            .addEventListener('change', actualizarBotonEnvioIne);
+
+        document.getElementById('formReenviarIne')
+            .addEventListener('reset', () => {
+                document.getElementById('btnReenviarIne').style.display = 'none';
+            });
 
         async function reenviarFotoIne(evento) {
             evento.preventDefault();

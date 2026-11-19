@@ -204,6 +204,17 @@
         #loginPolicia .boton:hover {
             background: var(--vino-principal);
         }
+
+        #btnSubirEvidenciaPolicial,
+        #btnFinalizar {
+            background: #691C32;
+            color: #FFFFFF;
+        }
+
+        #btnSubirEvidenciaPolicial:hover:not(:disabled),
+        #btnFinalizar:hover:not(:disabled) {
+            background: #9F2241;
+        }
     </style>
 
 </head>
@@ -358,17 +369,11 @@
                                 </p>
 
                                 <form id="formEvidenciaPolicial" onsubmit="subirEvidenciaPolicial(event)" hidden>
-                                    <div class="campo">
-                                        <label for="fotoEvidenciaPolicial">Foto de evidencia</label>
-                                        <input
-                                            id="fotoEvidenciaPolicial"
-                                            name="evidencia_foto"
-                                            type="file"
-                                            accept="image/jpeg,image/png"
-                                            aria-describedby="ayudaEvidenciaPolicial"
-                                            required>
-                                        <small id="ayudaEvidenciaPolicial">JPG o PNG de hasta 2 MB.</small>
-                                    </div>
+                                    @include('componentes.selector-foto', [
+                                    'idCampoFoto' => 'fotoEvidenciaPolicial',
+                                    'nombreCampoFoto' => 'evidencia_foto',
+                                    'etiquetaFoto' => 'Foto de evidencia',
+                                    ])
 
                                     <button type="submit" id="btnSubirEvidenciaPolicial" class="boton btn-finalizar">
                                         Subir evidencia

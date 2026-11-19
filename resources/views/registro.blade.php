@@ -223,22 +223,11 @@
 
                     </div>
 
-                    <div class="campo">
-                        <label for="ine_foto">Foto del INE</label>
-
-                        <input
-                            id="ine_foto"
-                            name="ine_foto"
-                            type="file"
-                            accept="image/jpeg,image/png"
-                            required>
-
-                        <small>Selecciona una imagen JPG o PNG de hasta 2 MB.</small>
-
-                        @error('ine_foto')
-                        <small class="error">{{ $message }}</small>
-                        @enderror
-                    </div>
+                    @include('componentes.selector-foto', [
+                    'idCampoFoto' => 'ine_foto',
+                    'nombreCampoFoto' => 'ine_foto',
+                    'etiquetaFoto' => 'Foto del INE',
+                    ])
 
                     <button
                         type="submit"
