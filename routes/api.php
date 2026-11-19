@@ -184,55 +184,50 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 
-// Generar códigos de invitación para el círculo de confianza.
-Route::post(
-    '/circulo-confianza/codigo',
-    [
+// Grupos: invitaciones y contactos.
+Route::middleware('auth:sanctum')->group(function () {
+
+    Route::post('/circulo-confianza/codigo', [
         \App\Http\Controllers\Api\CirculoConfianzaController::class,
-        'generarCodigo'
-    ]
-)->middleware([
-    'auth:sanctum',
-    'throttle:5,1'
-]);
+        'generarCodigo',
+    ])->middleware('throttle:5,1,grupos-codigo:');
 
-// Enviar una solicitud de contacto mediante un código.
-Route::post(
-    '/circulo-confianza/vincular',
-    [
+    Route::post('/circulo-confianza/vincular', [
         \App\Http\Controllers\Api\CirculoConfianzaController::class,
-        'vincularContacto'
-    ]
-)->middleware([
-    'auth:sanctum',
-    'throttle:5,1'
-]);
+        'vincularContacto',
+    ])->middleware('throttle:5,1,grupos-vincular:');
 
-
-
-
-// Consultar los contactos de confianza confirmados.
-Route::get(
-    '/circulo-confianza/contactos',
-    [
+    Route::get('/circulo-confianza/contactos', [
         \App\Http\Controllers\Api\CirculoConfianzaController::class,
-        'misContactos'
-    ]
-)->middleware([
-    'auth:sanctum',
-    'throttle:30,1'
-]);
+        'misContactos',
+    ])->middleware('throttle:30,1,grupos-listar:');
 
-
-
-// Eliminar un contacto de confianza confirmado.
-Route::delete(
-    '/circulo-confianza/contactos/{id}',
-    [
+    Route::delete('/circulo-confianza/contactos/{id}', [
         \App\Http\Controllers\Api\CirculoConfianzaController::class,
-        'eliminarContacto'
-    ]
-)->middleware([
-    'auth:sanctum',
-    'throttle:10,1'
-])->whereNumber('id');
+        'eliminarContacto',
+    ])
+        ->whereNumber('id')
+        ->middleware('throttle:10,1,grupos-eliminar:');
+
+    Route::post('/circulo-vecinos/codigo', [
+        \App\Http\Controllers\Api\CirculoVecinosController::class,
+        'generarCodigo',
+    ])->middleware('throttle:5,1,grupos-codigo:');
+
+    Route::post('/circulo-vecinos/vincular', [
+        \App\Http\Controllers\Api\CirculoVecinosController::class,
+        'vincularContacto',
+    ])->middleware('throttle:5,1,grupos-vincular:');
+
+    Route::get('/circulo-vecinos/contactos', [
+        \App\Http\Controllers\Api\CirculoVecinosController::class,
+        'misContactos',
+    ])->middleware('throttle:30,1,grupos-listar:');
+
+    Route::delete('/circulo-vecinos/contactos/{id}', [
+        \App\Http\Controllers\Api\CirculoVecinosController::class,
+        'eliminarContacto',
+    ])
+        ->whereNumber('id')
+        ->middleware('throttle:10,1,grupos-eliminar:');
+});

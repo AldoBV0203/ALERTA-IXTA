@@ -183,16 +183,23 @@
             }
         }
 
-        /* Pantalla independiente de la cuenta ciudadana */
-        #panelCuentaCiudadano {
+        /* Pantallas independientes del ciudadano */
+        #panelCuentaCiudadano,
+        #panelGruposCiudadano,
+        #panelHistorialCiudadano {
             display: none;
         }
 
-        #pantallaContenido.modo-cuenta> :not(#panelCuentaCiudadano) {
+        /* Mostrar únicamente el contenido de la sección seleccionada */
+        #pantallaContenido.modo-cuenta> :not(#panelCuentaCiudadano),
+        #pantallaContenido.modo-grupos> :not(#panelGruposCiudadano),
+        #pantallaContenido.modo-historial> :not(#panelHistorialCiudadano) {
             display: none !important;
         }
 
-        #pantallaContenido.modo-cuenta #panelCuentaCiudadano {
+        #pantallaContenido.modo-cuenta>#panelCuentaCiudadano,
+        #pantallaContenido.modo-grupos>#panelGruposCiudadano,
+        #pantallaContenido.modo-historial>#panelHistorialCiudadano {
             display: block;
             margin-top: 0;
         }
@@ -483,6 +490,223 @@
             opacity: 0.65;
             cursor: wait;
         }
+
+        /* Pantalla de grupos */
+        .cabecera-grupos {
+            margin-bottom: 24px;
+        }
+
+        .cabecera-grupos h2 {
+            margin: 0;
+            color: #252A30;
+            font-size: 24px;
+            line-height: 1.25;
+        }
+
+        .cabecera-grupos p {
+            margin: 8px 0 0;
+            color: #62676C;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .listado-grupos {
+            display: grid;
+            gap: 12px;
+        }
+
+        .acceso-grupo {
+            display: grid;
+            grid-template-columns: 44px minmax(0, 1fr) 18px;
+            align-items: center;
+            gap: 14px;
+            width: 100%;
+            min-height: 96px;
+            padding: 16px;
+            border: 1px solid #E5DDE0;
+            border-radius: 12px;
+            background: #FFFFFF;
+            font: inherit;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .acceso-grupo:hover {
+            border-color: #9F2241;
+            background: #FCF8F9;
+        }
+
+        .acceso-grupo:focus-visible {
+            outline: 2px solid #9F2241;
+            outline-offset: 3px;
+        }
+
+        .icono-grupo {
+            display: grid;
+            place-items: center;
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            background: #F6ECEF;
+            color: #691C32;
+        }
+
+        .icono-grupo svg,
+        .flecha-grupo {
+            width: 24px;
+            height: 24px;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.8;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .texto-grupo strong {
+            display: block;
+            color: #252A30;
+            font-size: 15px;
+            line-height: 1.4;
+        }
+
+        .texto-grupo>span {
+            display: block;
+            margin-top: 5px;
+            color: #62676C;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .flecha-grupo {
+            width: 18px;
+            height: 18px;
+            color: #92979C;
+        }
+
+        .volver-grupos {
+            display: inline-flex;
+            align-items: center;
+            margin: 0 0 20px;
+            padding: 6px 0;
+            border: none;
+            background: transparent;
+            color: #691C32;
+            font: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .volver-grupos:hover {
+            text-decoration: underline;
+        }
+
+        .volver-grupos:focus-visible {
+            outline: 2px solid #9F2241;
+            outline-offset: 4px;
+        }
+
+        #panelCuentaCiudadano>.boton-cerrar-sesion {
+            margin-top: 32px;
+        }
+
+        /* Herramientas compartidas de Grupos */
+        .herramienta-grupo {
+            margin-top: 28px;
+            padding-top: 24px;
+            border-top: 1px solid #E8E0E3;
+        }
+
+        .herramienta-grupo h3 {
+            margin: 0;
+            color: #252A30;
+            font-size: 16px;
+            line-height: 1.4;
+        }
+
+        .herramienta-grupo>p:not([role="status"]) {
+            margin: 8px 0 16px;
+            color: #62676C;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        #panelGruposCiudadano .campo label {
+            color: #252A30;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        #panelGruposCiudadano .campo input,
+        #panelGruposCiudadano .campo select {
+            width: 100%;
+            min-height: 46px;
+            box-sizing: border-box;
+            margin: 6px 0 0;
+            padding: 12px;
+            border: 1px solid #D8D3D5;
+            border-radius: 8px;
+            background: #FFFFFF;
+            color: #252A30;
+            font: inherit;
+            font-size: 14px;
+        }
+
+        #panelGruposCiudadano .campo input:focus-visible,
+        #panelGruposCiudadano .campo select:focus-visible {
+            outline: 2px solid #9F2241;
+            outline-offset: 2px;
+        }
+
+        /* Listas de contactos */
+        #listaContactosConfianza,
+        #listaContactosVecinos {
+            min-height: 75px;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #E5DDE0;
+            border-radius: 12px;
+            background: #FFFFFF;
+            box-sizing: border-box;
+        }
+
+        #listaContactosConfianza .tarjeta-contacto-confianza,
+        #listaContactosVecinos .tarjeta-contacto-confianza {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            align-items: center;
+            column-gap: 12px;
+            row-gap: 4px;
+            margin: 0;
+            padding: 14px 4px;
+            border: none;
+            border-radius: 0;
+            background: transparent;
+        }
+
+        #listaContactosConfianza .tarjeta-contacto-confianza+.tarjeta-contacto-confianza,
+        #listaContactosVecinos .tarjeta-contacto-confianza+.tarjeta-contacto-confianza {
+            border-top: 1px solid #EEE8EB;
+        }
+
+        #panelGruposCiudadano .tarjeta-contacto-confianza strong {
+            grid-column: 1;
+            color: #252A30;
+            overflow-wrap: anywhere;
+        }
+
+        #panelGruposCiudadano .tarjeta-contacto-confianza p {
+            grid-column: 1;
+            margin: 0;
+        }
+
+        #panelGruposCiudadano .boton-eliminar-confianza {
+            grid-column: 2;
+            grid-row: 1 / 3;
+            margin: 0;
+            padding: 8px 10px;
+            font-size: 12px;
+        }
     </style>
 
 </head>
@@ -733,17 +957,13 @@
 
                 </div>
 
-                <section
-                    id="panelCuentaCiudadano"
-                    class="estado-alerta">
+                <section id="panelCuentaCiudadano" class="estado-alerta">
 
                     <h2>Mi cuenta</h2>
 
                     <p>
                         <strong>Nombre:</strong>
-                        <span id="nombreCuentaCiudadano">
-                            Ciudadano
-                        </span>
+                        <span id="nombreCuentaCiudadano">Ciudadano</span>
                     </p>
 
                     <p>
@@ -759,7 +979,12 @@
 
                         <p id="motivoRechazoIne" class="info" hidden></p>
 
-                        <form id="formReenviarIne" class="campo" onsubmit="reenviarFotoIne(event)" hidden>
+                        <form
+                            id="formReenviarIne"
+                            class="campo"
+                            onsubmit="reenviarFotoIne(event)"
+                            hidden>
+
                             <label for="nuevaFotoIne">Nueva foto del INE</label>
 
                             <input
@@ -779,148 +1004,190 @@
 
                     <button
                         type="button"
-                        id="btnHistorialCiudadano"
-                        class="acceso-historial-ciudadano"
-                        onclick="abrirHistorialCiudadano()">
-
-                        <span>
-                            <strong>Historial de alertas</strong>
-                            <small>Consulta tus emergencias anteriores</small>
-                        </span>
-
-                        <span aria-hidden="true">›</span>
-
-                    </button>
-
-                    <button
-                        type="button"
-                        class="acceso-historial-ciudadano"
-                        onclick="abrirCirculoCiudadano()">
-
-                        <span>
-                            <strong>Mi círculo de confianza</strong>
-                            <small>Administra hasta 10 contactos de confianza</small>
-                        </span>
-
-                        <span aria-hidden="true">›</span>
-
-                    </button>
-
-                    <div class="panel-codigo-confianza">
-
-                        <h3>Mi código de invitación</h3>
-
-                        <p>
-                            Comparte este código con otro ciudadano
-                            para vincularse y recibir avisos
-                            de emergencia entre ambos.
-                        </p>
-
-                        <button
-                            type="button"
-                            id="btnGenerarCodigoConfianza"
-                            class="boton boton-codigo-confianza"
-                            onclick="generarCodigoConfianza()">
-                            Generar código
-                        </button>
-
-                        <div
-                            id="resultadoCodigoConfianza"
-                            style="display: none;">
-
-                            <strong id="valorCodigoConfianza"></strong>
-
-                            <p>
-                                Válido durante 15 minutos.
-                            </p>
-
-                        </div>
-
-                        <p
-                            id="mensajeCodigoConfianza"
-                            role="status">
-                        </p>
-
-                    </div>
-
-                    <div class="panel-introducir-codigo">
-
-                        <h3>Agregar contacto</h3>
-
-                        <p>
-                            Introduce el código de invitación
-                            de otro ciudadano registrado.
-                        </p>
-
-                        <input
-                            type="text"
-                            id="codigoContactoConfianza"
-                            placeholder="IXTA-XXXXXXXXXXXX"
-                            maxlength="17"
-                            autocomplete="off">
-
-                        <button
-                            type="button"
-                            id="btnEnviarSolicitudConfianza"
-                            class="boton boton-enviar-confianza"
-                            onclick="enviarSolicitudConfianza()">
-                            Vincular contacto
-                        </button>
-
-                        <p
-                            id="mensajeSolicitudConfianza"
-                            role="status">
-                        </p>
-
-                    </div>
-
-
-
-                    <div
-                        id="vistaHistorialCiudadano"
-                        style="display: none;">
-
-                        <button
-                            type="button"
-                            class="boton boton-secundario"
-                            onclick="volverCuentaCiudadano()">
-                            ← Volver a mi cuenta
-                        </button>
-
-                        <h2>Historial de alertas</h2>
-
-                        <div id="listaHistorialCiudadano">
-                            Aquí se mostrarán tus alertas anteriores.
-                        </div>
-
-                    </div>
-
-
-
-                    <div
-                        id="vistaCirculoCiudadano"
-                        style="display: none;">
-
-                        <button
-                            type="button"
-                            class="boton boton-secundario"
-                            onclick="volverCuentaCiudadano()">
-                            ← Volver a mi cuenta
-                        </button>
-
-                        <h2>Mi círculo de confianza</h2>
-
-
-                        <div id="listaContactosConfianza"></div>
-
-                    </div>
-
-                    <button
-                        type="button"
                         class="boton boton-cerrar-sesion"
                         onclick="cerrarSesion()">
                         Cerrar sesión
                     </button>
+
+                </section>
+
+                <section id="panelGruposCiudadano">
+
+                    <div id="vistaListadoGrupos">
+                        <header class="cabecera-grupos">
+                            <h2>Grupos</h2>
+                            <p>Administra tus contactos de confianza y vecinos.</p>
+                        </header>
+
+                        <div class="listado-grupos">
+
+                            <button
+                                type="button"
+                                class="acceso-grupo"
+                                onclick="abrirGrupoCiudadano('confianza')">
+
+                                <span class="icono-grupo" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24">
+                                        <circle cx="9" cy="8" r="3"></circle>
+                                        <path d="M3 20v-2a6 6 0 0 1 12 0v2"></path>
+                                        <path d="M16 5a3 3 0 0 1 0 6"></path>
+                                        <path d="M17 14a5 5 0 0 1 4 5v1"></path>
+                                    </svg>
+                                </span>
+
+                                <span class="texto-grupo">
+                                    <strong>Círculo de confianza</strong>
+                                    <span>Familiares y personas de confianza</span>
+                                </span>
+
+                                <svg class="flecha-grupo" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="m9 5 7 7-7 7"></path>
+                                </svg>
+                            </button>
+
+                            <button
+                                type="button"
+                                class="acceso-grupo"
+                                onclick="abrirGrupoCiudadano('vecinos')">
+
+                                <span class="icono-grupo" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24">
+                                        <path d="m3 10 9-7 9 7"></path>
+                                        <path d="M5 9v12h14V9"></path>
+                                        <path d="M9 21v-7h6v7"></path>
+                                    </svg>
+                                </span>
+
+                                <span class="texto-grupo">
+                                    <strong>Círculo de vecinos</strong>
+                                    <span>Personas de tu comunidad</span>
+                                </span>
+
+                                <svg class="flecha-grupo" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="m9 5 7 7-7 7"></path>
+                                </svg>
+                            </button>
+
+                        </div>
+
+                        <div class="herramienta-grupo">
+                            <h3>Mi código de invitación</h3>
+
+                            <p>
+                                Comparte este código con otra persona registrada.
+                                Ella elegirá el círculo donde se vincularán.
+                            </p>
+
+                            <button
+                                type="button"
+                                id="btnGenerarCodigoConfianza"
+                                class="boton boton-codigo-confianza"
+                                onclick="generarCodigoConfianza()">
+                                Generar código
+                            </button>
+
+                            <div id="resultadoCodigoConfianza" style="display: none;">
+                                <strong id="valorCodigoConfianza"></strong>
+                                <p>Válido durante 15 minutos.</p>
+                            </div>
+
+                            <p
+                                id="mensajeCodigoConfianza"
+                                class="info"
+                                role="status">
+                            </p>
+                        </div>
+
+                        <div class="herramienta-grupo">
+                            <h3>Agregar contacto</h3>
+                            <p>Elige un círculo e introduce el código de la otra persona.</p>
+
+                            <div class="campo">
+                                <label for="tipoCirculoContacto">Círculo</label>
+
+                                <select id="tipoCirculoContacto">
+                                    <option value="">Selecciona un círculo</option>
+                                    <option value="confianza">Círculo de confianza</option>
+                                    <option value="vecinos">Círculo de vecinos</option>
+                                </select>
+                            </div>
+
+                            <div class="campo">
+                                <label for="codigoContactoConfianza">Código de invitación</label>
+
+                                <input
+                                    type="text"
+                                    id="codigoContactoConfianza"
+                                    placeholder="IXTA-XXXXXXXXXXXX"
+                                    maxlength="17"
+                                    autocomplete="off"
+                                    spellcheck="false">
+                            </div>
+
+                            <button
+                                type="button"
+                                id="btnEnviarSolicitudConfianza"
+                                class="boton boton-enviar-confianza"
+                                onclick="enviarSolicitudConfianza()">
+                                Vincular contacto
+                            </button>
+
+                            <p
+                                id="mensajeSolicitudConfianza"
+                                class="info"
+                                role="status">
+                            </p>
+                        </div>
+                    </div>
+
+                    <div id="vistaCirculoCiudadano" style="display: none;">
+
+                        <button
+                            type="button"
+                            class="volver-grupos"
+                            onclick="volverGruposCiudadano()">
+                            ← Volver a Grupos
+                        </button>
+
+                        <header class="cabecera-grupos">
+                            <h2>Círculo de confianza</h2>
+                            <p>Consulta y administra tus contactos de confianza.</p>
+                        </header>
+
+                        <div id="listaContactosConfianza"></div>
+                    </div>
+
+                    <div id="vistaVecinosCiudadano" style="display: none;">
+
+                        <button
+                            type="button"
+                            class="volver-grupos"
+                            onclick="volverGruposCiudadano()">
+                            ← Volver a Grupos
+                        </button>
+
+                        <header class="cabecera-grupos">
+                            <h2>Círculo de vecinos</h2>
+                            <p>Consulta y administra tus vecinos vinculados.</p>
+                        </header>
+
+                        <div id="listaContactosVecinos" class="lista-vecinos"></div>
+                    </div>
+
+                </section>
+
+                <section id="panelHistorialCiudadano">
+
+                    <div id="vistaHistorialCiudadano">
+                        <header class="cabecera-grupos">
+                            <h2>Historial</h2>
+                            <p>Consulta tus alertas anteriores.</p>
+                        </header>
+
+                        <div id="listaHistorialCiudadano">
+                            Aquí se mostrarán tus alertas anteriores.
+                        </div>
+                    </div>
 
                 </section>
 
@@ -936,6 +1203,7 @@
                     type="button"
                     class="activo"
                     data-seccion="inicio"
+                    aria-current="page"
                     onclick="navegarCiudadano('inicio')">
                     Inicio
                 </button>
@@ -945,6 +1213,20 @@
                     data-seccion="sos"
                     onclick="navegarCiudadano('sos')">
                     SOS
+                </button>
+
+                <button
+                    type="button"
+                    data-seccion="grupos"
+                    onclick="navegarCiudadano('grupos')">
+                    Grupos
+                </button>
+
+                <button
+                    type="button"
+                    data-seccion="historial"
+                    onclick="navegarCiudadano('historial')">
+                    Historial
                 </button>
 
                 <button
@@ -1062,15 +1344,17 @@
 
         // Marcar la pestaña seleccionada.
         function marcarPestanaCiudadano(seccion) {
-
             document.querySelectorAll('#navCiudadano button')
                 .forEach(function(boton) {
+                    const seleccionado = boton.dataset.seccion === seccion;
 
-                    boton.classList.toggle(
-                        'activo',
-                        boton.dataset.seccion === seccion
-                    );
+                    boton.classList.toggle('activo', seleccionado);
 
+                    if (seleccionado) {
+                        boton.setAttribute('aria-current', 'page');
+                    } else {
+                        boton.removeAttribute('aria-current');
+                    }
                 });
         }
 
@@ -1220,94 +1504,84 @@
 
         // Enviar una solicitud de confianza mediante un código.
         async function enviarSolicitudConfianza() {
+            const campo = document.getElementById('codigoContactoConfianza');
+            const boton = document.getElementById('btnEnviarSolicitudConfianza');
+            const mensaje = document.getElementById('mensajeSolicitudConfianza');
+            const selector = document.getElementById('tipoCirculoContacto');
 
-            const campo = document.getElementById(
-                'codigoContactoConfianza'
-            );
-
-            const boton = document.getElementById(
-                'btnEnviarSolicitudConfianza'
-            );
-
-            const mensaje = document.getElementById(
-                'mensajeSolicitudConfianza'
-            );
-
+            const tipo = selector?.value ?? 'confianza';
             const codigo = campo.value.trim().toUpperCase();
 
-            mensaje.textContent = '';
-
-            // Comprobar que el ciudadano introdujo un código.
-            if (!codigo) {
-
-                mensaje.style.color = '#9F2241';
-
-                mensaje.textContent =
-                    'Introduce un código de invitación.';
-
+            if (boton.disabled) {
                 return;
             }
 
+            if (!['confianza', 'vecinos'].includes(tipo)) {
+                mensaje.style.color = '#9F2241';
+                mensaje.textContent = 'Selecciona el círculo donde agregarás al contacto.';
+                return;
+            }
+
+            if (!/^IXTA-[0-9A-F]{12}$/.test(codigo)) {
+                mensaje.style.color = '#9F2241';
+                mensaje.textContent = 'Introduce un código de invitación válido.';
+                return;
+            }
+
+            const ruta = tipo === 'vecinos' ?
+                '/circulo-vecinos/vincular' :
+                '/circulo-confianza/vincular';
+
             boton.disabled = true;
-            boton.textContent = 'Vinculando contacto...';
+
+            if (selector) {
+                selector.disabled = true;
+            }
+
+            mensaje.style.color = '#252A30';
+            mensaje.textContent = 'Vinculando contacto...';
 
             try {
-
-                const respuesta = await fetch(
-                    API + '/circulo-confianza/vincular', {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': 'Bearer ' + token,
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            codigo: codigo
-                        })
-                    }
-                );
+                const respuesta = await fetch(API + ruta, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        codigo
+                    })
+                });
 
                 const datos = await respuesta.json();
 
                 if (!respuesta.ok) {
-
                     mensaje.style.color = '#9F2241';
-
-                    mensaje.textContent =
+                    mensaje.textContent = datos.errors?.codigo?.[0] ??
                         datos.message ??
-                        'No fue posible enviar la solicitud.';
-
+                        'No se pudo vincular al contacto.';
                     return;
                 }
 
-                // Confirmar que la solicitud quedó pendiente.
-                mensaje.style.color = '#235B4E';
-
-                mensaje.textContent =
-                    'Contacto vinculado correctamente.';
-
                 campo.value = '';
+                mensaje.style.color = '#235B4E';
+                mensaje.textContent = tipo === 'vecinos' ?
+                    'Contacto vinculado al círculo de vecinos.' :
+                    'Contacto vinculado al círculo de confianza.';
 
-                // Actualizar los contactos después de vincular.
-                await cargarContactosConfianza();
-
+                if (tipo === 'confianza') {
+                    await cargarContactosConfianza();
+                }
             } catch (error) {
-
-                console.error(
-                    'Error enviando solicitud de confianza:',
-                    error
-                );
-
                 mensaje.style.color = '#9F2241';
-
-                mensaje.textContent =
-                    'No fue posible conectar con el servidor.';
-
+                mensaje.textContent = 'No fue posible conectar con el servidor.';
             } finally {
-
                 boton.disabled = false;
-                boton.textContent = 'Vincular contacto';
 
+                if (selector) {
+                    selector.disabled = false;
+                }
             }
         }
 
@@ -1552,156 +1826,259 @@
             }
         }
 
-        // Abrir Mi círculo de confianza.
-        function abrirCirculoCiudadano() {
+        let consultaVecinosActual = 0;
 
-            const cuenta = document.getElementById(
-                'panelCuentaCiudadano'
-            );
+        // Consultar los vecinos vinculados al ciudadano.
+        async function cargarContactosVecinos() {
+            const lista = document.getElementById('listaContactosVecinos');
+            const consulta = ++consultaVecinosActual;
 
-            const circulo = document.getElementById(
-                'vistaCirculoCiudadano'
-            );
+            lista.textContent = 'Cargando vecinos...';
 
-            // Ocultar los demás elementos de Cuenta.
-            Array.from(cuenta.children).forEach(function(elemento) {
+            try {
+                const respuesta = await fetch(
+                    API + '/circulo-vecinos/contactos', {
+                        headers: {
+                            'Authorization': 'Bearer ' + token,
+                            'Accept': 'application/json'
+                        },
+                        cache: 'no-store'
+                    }
+                );
 
-                if (elemento !== circulo) {
-                    elemento.style.display = 'none';
+                const datos = await respuesta.json();
+
+                if (consulta !== consultaVecinosActual) {
+                    return;
                 }
 
-            });
-
-            // Mostrar únicamente Mi círculo de confianza.
-            circulo.style.display = 'block';
-
-            // Mostrar los contactos vinculados desde MySQL.
-            cargarContactosConfianza();
-
-            document.getElementById('pantallaContenido')
-                .scrollTo({
-                    top: 0,
-                    behavior: 'auto'
-                });
-        }
-
-        // Abrir el historial dentro de Cuenta.
-        function abrirHistorialCiudadano() {
-
-            const cuenta = document.getElementById(
-                'panelCuentaCiudadano'
-            );
-
-            const historial = document.getElementById(
-                'vistaHistorialCiudadano'
-            );
-
-            Array.from(cuenta.children).forEach(function(elemento) {
-                if (elemento !== historial) {
-                    elemento.style.display = 'none';
+                if (!respuesta.ok || !Array.isArray(datos.contactos)) {
+                    lista.textContent = 'No fue posible consultar tus vecinos.';
+                    return;
                 }
-            });
 
-            historial.style.display = 'block';
+                lista.replaceChildren();
 
-            // Consultar las alertas guardadas en MySQL.
-            cargarHistorialCiudadano();
+                if (datos.contactos.length === 0) {
+                    const mensaje = document.createElement('p');
+                    mensaje.className = 'info';
+                    mensaje.textContent = 'Todavía no tienes vecinos vinculados.';
+                    lista.appendChild(mensaje);
+                    return;
+                }
 
-            document.getElementById('pantallaContenido')
-                .scrollTo({
-                    top: 0,
-                    behavior: 'auto'
+                datos.contactos.forEach(function(vecino) {
+                    const tarjeta = document.createElement('div');
+                    tarjeta.className = 'tarjeta-contacto-confianza';
+
+                    const nombre = document.createElement('strong');
+                    nombre.textContent = vecino.nombre ?? 'Ciudadano';
+
+                    const estado = document.createElement('p');
+                    estado.textContent = 'Vecino vinculado';
+
+                    const boton = document.createElement('button');
+                    boton.type = 'button';
+                    boton.className = 'boton-eliminar-confianza';
+                    boton.textContent = 'Eliminar';
+
+                    boton.setAttribute(
+                        'aria-label',
+                        'Eliminar vínculo con ' + (vecino.nombre ?? 'este vecino')
+                    );
+
+                    boton.addEventListener('click', function() {
+                        eliminarContactoVecinos(
+                            vecino.id_vinculo,
+                            vecino.nombre,
+                            boton
+                        );
+                    });
+
+                    tarjeta.append(nombre, estado, boton);
+                    lista.appendChild(tarjeta);
                 });
+            } catch (error) {
+                if (consulta === consultaVecinosActual) {
+                    lista.textContent = 'No fue posible conectar con el servidor.';
+                }
+            }
         }
 
+        // Eliminar el vínculo de vecinos para ambas cuentas.
+        async function eliminarContactoVecinos(id, nombre, boton) {
+            if (boton.disabled) {
+                return;
+            }
 
-        // Regresar a Mi cuenta desde Historial o Mi círculo.
+            const confirmar = window.confirm(
+                '¿Eliminar el vínculo con ' + (nombre ?? 'este vecino') +
+                '? Se eliminará del círculo de vecinos de ambas cuentas.'
+            );
+
+            if (!confirmar) {
+                return;
+            }
+
+            const tarjeta = boton.closest('.tarjeta-contacto-confianza');
+
+            tarjeta.querySelector('.error-eliminar-vecino')?.remove();
+
+            function mostrarError(texto) {
+                const aviso = document.createElement('p');
+                aviso.className = 'info error-eliminar-vecino';
+                aviso.setAttribute('role', 'status');
+                aviso.style.color = '#9F2241';
+                aviso.style.gridColumn = '1 / -1';
+                aviso.textContent = texto;
+                tarjeta.appendChild(aviso);
+            }
+
+            boton.disabled = true;
+
+            try {
+                const respuesta = await fetch(
+                    API + '/circulo-vecinos/contactos/' + encodeURIComponent(id), {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': 'Bearer ' + token,
+                            'Accept': 'application/json'
+                        }
+                    }
+                );
+
+                const datos = await respuesta.json();
+
+                if (!respuesta.ok) {
+                    mostrarError(
+                        respuesta.status >= 500 ?
+                        'No fue posible eliminar el vínculo. Intenta nuevamente.' :
+                        datos.message ?? 'No se pudo eliminar el vínculo.'
+                    );
+                    return;
+                }
+
+                await cargarContactosVecinos();
+            } catch (error) {
+                mostrarError('No fue posible conectar con el servidor.');
+            } finally {
+                boton.disabled = false;
+            }
+        }
+
+        function abrirGrupoCiudadano(tipo) {
+            if (!['confianza', 'vecinos'].includes(tipo)) {
+                return;
+            }
+
+            const vistas = {
+                confianza: 'vistaCirculoCiudadano',
+                vecinos: 'vistaVecinosCiudadano'
+            };
+
+            navegarCiudadano('grupos');
+
+            document.getElementById('vistaListadoGrupos')
+                .style.display = 'none';
+
+            document.getElementById(vistas[tipo])
+                .style.display = 'block';
+
+            if (tipo === 'confianza') {
+                cargarContactosConfianza();
+            } else {
+                cargarContactosVecinos();
+            }
+        }
+
+        function volverGruposCiudadano() {
+            navegarCiudadano('grupos');
+        }
+
         function volverCuentaCiudadano() {
+            const cuenta = document.getElementById('panelCuentaCiudadano');
 
-            const cuenta = document.getElementById(
-                'panelCuentaCiudadano'
-            );
-
-            const historial = document.getElementById(
-                'vistaHistorialCiudadano'
-            );
-
-            const circulo = document.getElementById(
-                'vistaCirculoCiudadano'
-            );
-
-            // Ocultar las dos pantallas internas.
-            historial.style.display = 'none';
-            circulo.style.display = 'none';
-
-            // Volver a mostrar los elementos principales de Cuenta.
             Array.from(cuenta.children).forEach(function(elemento) {
-
-                if (
-                    elemento !== historial &&
-                    elemento !== circulo
-                ) {
-                    elemento.style.removeProperty('display');
-                }
-
+                elemento.style.removeProperty('display');
             });
 
-            document.getElementById('pantallaContenido')
-                .scrollTo({
-                    top: 0,
-                    behavior: 'auto'
-                });
+            document.getElementById('pantallaContenido').scrollTo({
+                top: 0,
+                behavior: 'auto'
+            });
         }
 
         // Navegar entre Inicio, SOS y Cuenta.
         function navegarCiudadano(seccion) {
+            const secciones = ['inicio', 'sos', 'grupos', 'historial', 'cuenta'];
 
-            const contenido = document.getElementById(
-                'pantallaContenido'
-            );
+            if (!secciones.includes(seccion)) {
+                return;
+            }
 
-            // Mostrar u ocultar la pantalla Cuenta.
-            contenido.classList.toggle(
+            const contenido = document.getElementById('pantallaContenido');
+
+            contenido.classList.remove(
                 'modo-cuenta',
-                seccion === 'cuenta'
+                'modo-grupos',
+                'modo-historial'
             );
 
-            // Cambiar la pestaña activa.
+            const modos = {
+                cuenta: 'modo-cuenta',
+                grupos: 'modo-grupos',
+                historial: 'modo-historial'
+            };
+
+            if (modos[seccion]) {
+                contenido.classList.add(modos[seccion]);
+            }
+
             marcarPestanaCiudadano(seccion);
+
             if (seccion === 'cuenta') {
+                volverCuentaCiudadano();
                 cargarUsuario();
             }
 
-            if (seccion === 'inicio' || seccion === 'cuenta') {
+            if (seccion === 'historial') {
+                document.getElementById('vistaHistorialCiudadano')
+                    .style.display = 'block';
 
+                cargarHistorialCiudadano();
+            }
+
+            if (seccion === 'grupos') {
+                document.getElementById('vistaListadoGrupos')
+                    .style.display = 'block';
+
+                document.querySelectorAll(
+                    '#vistaCirculoCiudadano, #vistaVecinosCiudadano'
+                ).forEach(function(vista) {
+                    vista.style.display = 'none';
+                });
+            }
+
+            if (seccion === 'inicio' || seccion === 'sos') {
+                if (mapa) {
+                    requestAnimationFrame(function() {
+                        mapa.invalidateSize();
+                    });
+                }
+            }
+
+            if (seccion === 'sos') {
+                requestAnimationFrame(function() {
+                    document.getElementById('btnSOS').scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center'
+                    });
+                });
+            } else {
                 contenido.scrollTo({
                     top: 0,
                     behavior: 'auto'
                 });
-
-            }
-
-            if (seccion === 'sos') {
-
-                requestAnimationFrame(function() {
-
-                    document.getElementById('btnSOS')
-                        .scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'center'
-                        });
-
-                });
-
-            }
-
-            // Ajustar el mapa al regresar desde Cuenta.
-            if (seccion !== 'cuenta' && mapa) {
-
-                requestAnimationFrame(function() {
-                    mapa.invalidateSize();
-                });
-
             }
         }
 
