@@ -400,6 +400,61 @@ class AlertaController extends Controller
         ]);
     }
 
+    public function generarQrAtencion(Request $request, int $id)
+    {
+        $usuario = $request->user();
+
+        if (!($usuario instanceof User) || $usuario->estatus !== 'ACTIVO') {
+            return response()->json([
+                'message' => 'Necesitas una cuenta de ciudadano activa.',
+            ], 403);
+        }
+
+        return DB::transaction(function () use ($id, $usuario) {
+            $alerta = Alerta::whereKey($id)
+                ->where('id_usuario', $usuario->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$alerta) {
+                return response()->json([
+                    'message' => 'La alerta no existe.',
+                ], 404);
+            }
+
+            if ($alerta->estado !== 'EN_SITIO') {
+                return response()->json([
+                    'message' => 'Solo puedes generar el QR cuando el policía esté en sitio.',
+                ], 409);
+            }
+
+            if ($alerta->cierre_qr_usado_at !== null) {
+                return response()->json([
+                    'message' => 'El QR de esta atención ya fue utilizado.',
+                ], 409);
+            }
+
+            $contenido = 'AIX-CIERRE:'
+                . $alerta->id_alerta
+                . ':'
+                . bin2hex(random_bytes(32));
+
+            $alerta->cierre_qr_hash = hash('sha256', $contenido);
+            $alerta->cierre_qr_expira_at = now()->addMinutes(5);
+            $alerta->save();
+
+            return response()->json([
+                'message' => 'QR generado. Muéstralo al policía para finalizar la atención.',
+                'qr' => [
+                    'id_alerta' => $alerta->id_alerta,
+                    'folio' => $alerta->folio,
+                    'contenido' => $contenido,
+                    'expira_at' => $alerta->cierre_qr_expira_at->toIso8601String(),
+                ],
+            ])->header('Cache-Control', 'no-store, private');
+        });
+    }
+
     public function confirmarAtencion(Request $request, int $id)
     {
         $usuario = $request->user();

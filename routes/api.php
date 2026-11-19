@@ -128,8 +128,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/monitoreo/alertas/{id}/cerrar', [
         MonitoreoController::class,
-        'cerrar'
-    ]);
+        'cerrar',
+    ])
+        ->whereNumber('id')
+        ->middleware('throttle:10,1');
 
     Route::get('/monitoreo/alertas/{id}/seguimiento', [
         MonitoreoController::class,
@@ -159,10 +161,14 @@ Route::middleware('auth:sanctum')->group(function () {
         ]
     )->whereNumber('id');
 
-    Route::post('/mis-alertas/{id}/confirmar-atencion', [
+    Route::post('/mis-alertas/{id}/qr-atencion', [
         AlertaController::class,
-        'confirmarAtencion',
-    ])->whereNumber('id');
+        'generarQrAtencion',
+    ])
+        ->whereNumber('id')
+        ->middleware('throttle:5,1');
+
+
 
     Route::post('/mis-alertas/{id}/confirmar-cancelacion', [
         SolicitudCancelacionController::class,

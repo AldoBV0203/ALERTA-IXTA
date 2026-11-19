@@ -834,7 +834,7 @@ class MonitoreoController extends Controller
         $personal = $request->user();
 
         if (
-            !$personal instanceof Operador ||
+            !($personal instanceof Operador) ||
             !$personal->activo ||
             $personal->rol !== 'POLICIA'
         ) {
@@ -845,74 +845,129 @@ class MonitoreoController extends Controller
 
         $datos = $request->validate([
             'observaciones' => 'required|string|max:1000',
+            'codigo_qr' => 'required|string|max:200',
+        ], [
+            'codigo_qr.required' => 'Escanea el QR del ciudadano para finalizar.',
         ]);
 
         return DB::transaction(function () use ($request, $id, $personal, $datos) {
-            $alerta = Alerta::whereKey($id)->lockForUpdate()->first();
+            $alerta = Alerta::whereKey($id)
+                ->lockForUpdate()
+                ->first();
 
             if (!$alerta) {
-                return response()->json(['message' => 'La alerta no existe.'], 404);
-            }
-
-            if ($alerta->estado === 'NUEVA') {
                 return response()->json([
-                    'message' => 'La alerta debe ser aceptada antes de finalizar la atención.',
-                ], 409);
+                    'message' => 'La alerta no existe.',
+                ], 404);
             }
 
             if ($this->obtenerOperadorAsignado($id) !== (int) $personal->id_operador) {
                 return response()->json([
-                    'message' => 'Esta alerta está asignada a otro operador.',
+                    'message' => 'Esta alerta no está asignada a tu cuenta.',
                 ], 403);
             }
 
-            if ($alerta->estado === 'EN_SITIO') {
-                $rutaEvidencia = SeguimientoAlerta::where('id_alerta', $id)
-                    ->where('id_operador', $personal->id_operador)
-                    ->where('accion', 'EVIDENCIA_POLICIAL')
-                    ->value('evidencia_foto_path');
+            $hashRecibido = hash('sha256', $datos['codigo_qr']);
 
-                if (blank($rutaEvidencia) || !Storage::disk('local')->exists($rutaEvidencia)) {
-                    return response()->json([
-                        'message' => 'Sube la foto de evidencia antes de finalizar la atención.',
-                    ], 409);
-                }
-
-                SeguimientoAlerta::create([
-                    'id_alerta' => $id,
-                    'id_operador' => $personal->id_operador,
-                    'accion' => 'ATENCION_FINALIZADA_POLICIA',
-                    'observaciones' => $datos['observaciones'],
-                    'fecha_hora' => now(),
-                ]);
-
-                $alerta->estado = 'PENDIENTE_CONFIRMACION';
-                $alerta->save();
-
-                $personal->disponible = true;
-                $personal->save();
-
-                $this->registrarAuditoria($request, $personal, 'FINALIZAR_ATENCION_POLICIA', $id);
-            } else {
-                $yaFinalizada = in_array($alerta->estado, ['PENDIENTE_CONFIRMACION', 'CERRADA'], true)
-                    && SeguimientoAlerta::where('id_alerta', $id)
-                    ->where('id_operador', $personal->id_operador)
-                    ->where('accion', 'ATENCION_FINALIZADA_POLICIA')
-                    ->exists();
-
-                if (!$yaFinalizada) {
-                    return response()->json([
-                        'message' => 'La alerta no permite finalizar la atención en su estado actual.',
-                    ], 409);
-                }
+            if (
+                blank($alerta->cierre_qr_hash) ||
+                !hash_equals($alerta->cierre_qr_hash, $hashRecibido)
+            ) {
+                return response()->json([
+                    'message' => 'El QR no corresponde a esta alerta o fue reemplazado por uno nuevo.',
+                ], 422);
             }
 
-            $alerta->cerrarSiAtencionConfirmada();
+            // Si se repite una solicitud exitosa, no duplicar el cierre.
+            if (
+                $alerta->estado === 'CERRADA' &&
+                $alerta->cierre_qr_usado_at !== null
+            ) {
+                return response()->json([
+                    'message' => 'Esta alerta ya quedó cerrada mediante este QR.',
+                    'alerta' => [
+                        'id_alerta' => $alerta->id_alerta,
+                        'folio' => $alerta->folio,
+                        'estado' => $alerta->estado,
+                    ],
+                ]);
+            }
+
+            if (
+                $alerta->estado !== 'EN_SITIO' ||
+                $alerta->cierre_qr_usado_at !== null
+            ) {
+                return response()->json([
+                    'message' => 'La alerta no permite finalizar la atención en su estado actual.',
+                ], 409);
+            }
+
+            if (
+                !$alerta->cierre_qr_expira_at ||
+                now()->greaterThanOrEqualTo($alerta->cierre_qr_expira_at)
+            ) {
+                return response()->json([
+                    'message' => 'El QR venció. Pide al ciudadano que genere uno nuevo.',
+                ], 409);
+            }
+
+            $rutaEvidencia = SeguimientoAlerta::where('id_alerta', $id)
+                ->where('id_operador', $personal->id_operador)
+                ->where('accion', 'EVIDENCIA_POLICIAL')
+                ->value('evidencia_foto_path');
+
+            if (
+                blank($rutaEvidencia) ||
+                !Storage::disk('local')->exists($rutaEvidencia)
+            ) {
+                return response()->json([
+                    'message' => 'Sube la foto de evidencia antes de finalizar la atención.',
+                ], 409);
+            }
+
+            $momentoCierre = now();
+
+            SeguimientoAlerta::firstOrCreate([
+                'id_alerta' => $id,
+                'accion' => 'ATENCION_CONFIRMADA_CIUDADANO',
+            ], [
+                'id_operador' => null,
+                'observaciones' => 'Se validó el QR de atención generado por el ciudadano.',
+                'fecha_hora' => $momentoCierre,
+            ]);
+
+            SeguimientoAlerta::create([
+                'id_alerta' => $id,
+                'id_operador' => $personal->id_operador,
+                'accion' => 'ATENCION_FINALIZADA_POLICIA',
+                'observaciones' => $datos['observaciones'],
+                'fecha_hora' => $momentoCierre,
+            ]);
+
+            $alerta->cierre_qr_usado_at = $momentoCierre;
+            $alerta->estado = 'CERRADA';
+            $alerta->save();
+
+            SeguimientoAlerta::create([
+                'id_alerta' => $id,
+                'id_operador' => $personal->id_operador,
+                'accion' => 'CIERRE_ALERTA',
+                'observaciones' => 'Alerta cerrada con evidencia policial y validación del QR del ciudadano.',
+                'fecha_hora' => $momentoCierre,
+            ]);
+
+            $personal->disponible = true;
+            $personal->save();
+
+            $this->registrarAuditoria(
+                $request,
+                $personal,
+                'CIERRE_ALERTA_QR',
+                $id
+            );
 
             return response()->json([
-                'message' => $alerta->estado === 'CERRADA'
-                    ? 'Alerta cerrada correctamente.'
-                    : 'Atención finalizada. Falta la confirmación del ciudadano.',
+                'message' => 'QR validado. La alerta quedó cerrada correctamente.',
                 'alerta' => [
                     'id_alerta' => $alerta->id_alerta,
                     'folio' => $alerta->folio,

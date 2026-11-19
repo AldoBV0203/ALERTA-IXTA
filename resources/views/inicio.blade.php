@@ -660,12 +660,37 @@
                         type="button"
                         id="btnConfirmarAtencionCiudadano"
                         class="boton"
-                        onclick="confirmarAtencionCiudadano()"
+                        onclick="generarQrAtencionCiudadano()"
                         style="display: none; margin-top: 10px; background: var(--vino-principal);">
-                        Confirmar que recibí atención
+                        Generar QR de atención
                     </button>
 
                     <p id="mensajeConfirmacionAtencion" class="info" role="status" hidden></p>
+
+                    <div
+                        id="panelQrAtencion"
+                        hidden
+                        style="background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 16px; margin-top: 12px; text-align: center;">
+
+                        <strong>QR de atención</strong>
+
+                        <div
+                            id="imagenQrAtencion"
+                            style="display: flex; justify-content: center; padding: 16px 0;">
+                        </div>
+
+                        <p id="folioQrAtencion" class="info"></p>
+
+                        <p
+                            id="vigenciaQrAtencion"
+                            class="info"
+                            role="status">
+                        </p>
+
+                        <p class="info">
+                            Muestra este QR al policía para finalizar la atención.
+                        </p>
+                    </div>
 
                     <button
                         type="button"
@@ -940,6 +965,7 @@
         src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
     </script>
 
+    <script src="{{ asset('js/vendor/qrcodejs/qrcode.min.js') }}"></script>
 
     <script>
         const API = '/api';
@@ -1175,47 +1201,6 @@
                         tarjeta.appendChild(parrafo);
 
                     });
-                    if (alerta.estado === 'PENDIENTE_CONFIRMACION') {
-                        const boton = document.createElement('button');
-                        boton.type = 'button';
-                        boton.className = 'boton';
-                        boton.style.background = 'var(--vino-principal)';
-                        boton.textContent = 'Confirmar que recibí atención';
-
-                        const mensaje = document.createElement('p');
-                        mensaje.className = 'info';
-                        mensaje.setAttribute('role', 'status');
-
-                        boton.addEventListener('click', async function() {
-                            boton.disabled = true;
-                            mensaje.textContent = 'Registrando confirmación...';
-
-                            try {
-                                const {
-                                    respuesta,
-                                    datos
-                                } = await enviarConfirmacionAtencion(alerta.id_alerta);
-
-                                if (!respuesta.ok) {
-                                    mensaje.textContent = datos.message ?? 'No se pudo confirmar la atención.';
-                                    return;
-                                }
-
-                                if (idAlertaActual === alerta.id_alerta) {
-                                    await consultarEstadoAlerta();
-                                }
-
-                                await cargarHistorialCiudadano();
-                            } catch (error) {
-                                mensaje.textContent = 'No se pudo conectar. Intenta nuevamente.';
-                            } finally {
-                                boton.disabled = false;
-                            }
-                        });
-
-                        tarjeta.append(boton, mensaje);
-                    }
-
                     lista.appendChild(tarjeta);
 
                 });
@@ -2873,13 +2858,20 @@
 
         }
 
-        let confirmandoAtencionCiudadano = false;
         let idAtencionConfirmadaCiudadano = null;
+
+        let temporizadorQrAtencion = null;
 
         function mostrarConfirmacionAtencion(alerta) {
             const boton = document.getElementById('btnConfirmarAtencionCiudadano');
             const mensaje = document.getElementById('mensajeConfirmacionAtencion');
+            const panel = document.getElementById('panelQrAtencion');
+            const imagen = document.getElementById('imagenQrAtencion');
+            const vigencia = document.getElementById('vigenciaQrAtencion');
             const idAlerta = String(alerta.id_alerta);
+
+            clearTimeout(temporizadorQrAtencion);
+            temporizadorQrAtencion = null;
 
             if (mensaje.dataset.idAlerta !== idAlerta) {
                 mensaje.dataset.idAlerta = idAlerta;
@@ -2890,88 +2882,184 @@
                 idAtencionConfirmadaCiudadano = idAlerta;
             }
 
-            const confirmada = idAtencionConfirmadaCiudadano === idAlerta;
-            const puedeConfirmar = ['EN_SITIO', 'PENDIENTE_CONFIRMACION'].includes(alerta.estado);
+            if (
+                qrAtencionActual &&
+                qrAtencionActual.id_alerta !== idAlerta
+            ) {
+                qrAtencionActual = null;
+                imagen.replaceChildren();
+            }
 
-            boton.style.display = puedeConfirmar && !confirmada ? 'block' : 'none';
-            boton.disabled = confirmandoAtencionCiudadano;
+            if (alerta.estado !== 'EN_SITIO') {
+                qrAtencionActual = null;
+                imagen.replaceChildren();
+                panel.hidden = true;
+                boton.style.display = 'none';
 
-            if (confirmada && (puedeConfirmar || alerta.estado === 'CERRADA')) {
                 mensaje.style.color = '#235B4E';
-                mensaje.textContent = alerta.estado === 'EN_SITIO' ?
-                    'Confirmaste que recibiste la atención. Falta que el policía finalice.' :
-                    'Confirmaste que recibiste la atención.';
-            } else if (!puedeConfirmar) {
-                mensaje.textContent = '';
+                mensaje.textContent = alerta.estado === 'CERRADA' ?
+                    'Atención finalizada. La alerta quedó cerrada.' :
+                    '';
+
+                mensaje.hidden = !mensaje.textContent;
+                return;
+            }
+
+            boton.disabled = generandoQrAtencion;
+            boton.textContent = generandoQrAtencion ?
+                'Generando QR...' :
+                qrAtencionActual ?
+                'Generar nuevo QR' :
+                'Generar QR de atención';
+
+            if (!qrAtencionActual) {
+                panel.hidden = true;
+                boton.style.display = 'block';
+                mensaje.hidden = !mensaje.textContent;
+                return;
+            }
+
+            const vencimiento = Date.parse(qrAtencionActual.expira_at);
+            const vigente = vencimiento > Date.now();
+
+            panel.hidden = false;
+            boton.style.display = vigente ? 'none' : 'block';
+
+            if (!vigente) {
+                imagen.replaceChildren();
+                vigencia.textContent = 'Este QR venció. Genera uno nuevo.';
+            } else {
+                vigencia.textContent =
+                    'Vence a las ' + new Date(vencimiento).toLocaleTimeString('es-MX');
+
+                temporizadorQrAtencion = setTimeout(function() {
+                    if (String(idAlertaActual) === idAlerta) {
+                        mostrarConfirmacionAtencion({
+                            id_alerta: idAlertaActual,
+                            estado: estadoAlertaActual
+                        });
+                    }
+                }, vencimiento - Date.now() + 100);
             }
 
             mensaje.hidden = !mensaje.textContent;
         }
 
-        async function enviarConfirmacionAtencion(idAlerta) {
-            const respuesta = await fetch(API + '/mis-alertas/' + idAlerta + '/confirmar-atencion', {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'Bearer ' + token,
-                    'Accept': 'application/json'
-                }
-            });
+        let generandoQrAtencion = false;
+        let qrAtencionActual = null;
 
-            const datos = await respuesta.json();
-            return {
-                respuesta,
-                datos
-            };
-        }
-
-        async function confirmarAtencionCiudadano() {
+        async function generarQrAtencionCiudadano() {
             const idAlerta = idAlertaActual;
             const boton = document.getElementById('btnConfirmarAtencionCiudadano');
             const mensaje = document.getElementById('mensajeConfirmacionAtencion');
+            const imagen = document.getElementById('imagenQrAtencion');
 
-            if (!idAlerta || confirmandoAtencionCiudadano || boton.style.display === 'none') {
+            if (
+                !idAlerta ||
+                generandoQrAtencion ||
+                estadoAlertaActual !== 'EN_SITIO'
+            ) {
                 return;
             }
 
-            confirmandoAtencionCiudadano = true;
+            mensaje.hidden = false;
+
+            if (typeof QRCode === 'undefined') {
+                mensaje.style.color = '#9F2241';
+                mensaje.textContent = 'No se pudo cargar el generador del QR. Recarga la página.';
+                return;
+            }
+
+            generandoQrAtencion = true;
             boton.disabled = true;
+            mensaje.style.color = '#252A30';
+            mensaje.textContent = 'Generando QR...';
 
             try {
-                const {
-                    respuesta,
-                    datos
-                } = await enviarConfirmacionAtencion(idAlerta);
+                const respuesta = await fetch(
+                    API + '/mis-alertas/' + idAlerta + '/qr-atencion', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer ' + token,
+                            'Accept': 'application/json'
+                        }
+                    }
+                );
 
-                if (idAlertaActual !== idAlerta) {
+                const datos = await respuesta.json();
+
+                if (
+                    idAlertaActual !== idAlerta ||
+                    estadoAlertaActual !== 'EN_SITIO'
+                ) {
                     return;
                 }
 
                 if (!respuesta.ok) {
                     mensaje.style.color = '#9F2241';
-                    mensaje.textContent = datos.message ?? 'No se pudo confirmar la atención.';
-                    mensaje.hidden = false;
+                    mensaje.textContent = datos.message ?? 'No se pudo generar el QR.';
                     return;
                 }
 
-                mostrarConfirmacionAtencion({
-                    id_alerta: idAlerta,
-                    estado: datos.estado,
-                    atencion_confirmada: true
+                const vencimiento = Date.parse(datos.qr?.expira_at);
+
+                if (
+                    typeof datos.qr?.contenido !== 'string' ||
+                    String(datos.qr.id_alerta) !== String(idAlerta) ||
+                    !Number.isFinite(vencimiento) ||
+                    vencimiento <= Date.now()
+                ) {
+                    throw new Error('La respuesta del QR no es válida.');
+                }
+
+                imagen.replaceChildren();
+
+                new QRCode(imagen, {
+                    text: datos.qr.contenido,
+                    width: 200,
+                    height: 200,
+                    colorDark: '#000000',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.M
                 });
 
-                document.getElementById('btnCancelarAlerta').style.display = 'none';
-                document.getElementById('formConfirmarCancelacion').hidden = true;
-                document.getElementById('estadoSolicitudCancelacion').textContent = '';
-                await consultarEstadoAlerta();
+                imagen.removeAttribute('title');
+
+                qrAtencionActual = {
+                    id_alerta: String(idAlerta),
+                    folio: datos.qr.folio,
+                    expira_at: datos.qr.expira_at
+                };
+
+                document.getElementById('folioQrAtencion').textContent =
+                    'Folio: ' + datos.qr.folio;
+
+                document.getElementById('vigenciaQrAtencion').textContent =
+                    'Vence a las ' + new Date(vencimiento).toLocaleTimeString('es-MX');
+
+                document.getElementById('panelQrAtencion').hidden = false;
+
+                mensaje.textContent = '';
+                mensaje.hidden = true;
             } catch (error) {
-                if (idAlertaActual === idAlerta) {
+                if (
+                    idAlertaActual === idAlerta &&
+                    estadoAlertaActual === 'EN_SITIO'
+                ) {
                     mensaje.style.color = '#9F2241';
-                    mensaje.textContent = 'No se pudo conectar. Intenta nuevamente.';
+                    mensaje.textContent = 'No fue posible mostrar el QR. Intenta nuevamente.';
                     mensaje.hidden = false;
                 }
             } finally {
-                confirmandoAtencionCiudadano = false;
+                generandoQrAtencion = false;
                 boton.disabled = false;
+
+                if (idAlertaActual) {
+                    mostrarConfirmacionAtencion({
+                        id_alerta: idAlertaActual,
+                        estado: estadoAlertaActual
+                    });
+                }
             }
         }
 

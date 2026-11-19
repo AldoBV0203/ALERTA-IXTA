@@ -385,10 +385,47 @@
                                     type="button"
                                     id="btnFinalizar"
                                     class="boton btn-finalizar"
-                                    onclick="finalizarAtencion()"
+                                    onclick="abrirLectorQrPolicia()"
                                     style="display: none;">
-                                    Finalizar atención
+                                    Escanear QR y finalizar atención
                                 </button>
+
+                                <div
+                                    id="panelLectorQrPolicia"
+                                    hidden
+                                    style="background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 15px; margin-top: 12px;">
+
+                                    <h3>Escanear QR de atención</h3>
+
+                                    <p class="info">
+                                        Coloca el QR del ciudadano frente a la cámara.
+                                    </p>
+
+                                    <div style="position: relative; overflow: hidden; border-radius: 8px;">
+                                        <video
+                                            id="videoQrPolicia"
+                                            autoplay
+                                            muted
+                                            playsinline
+                                            aria-label="Cámara para escanear el QR de atención"
+                                            style="display: block; width: 100%; background: #000;">
+                                        </video>
+                                    </div>
+
+                                    <p
+                                        id="mensajeLectorQrPolicia"
+                                        class="info"
+                                        role="status">
+                                    </p>
+
+                                    <button
+                                        type="button"
+                                        id="btnCerrarLectorQrPolicia"
+                                        class="boton boton-secundario"
+                                        onclick="cerrarLectorQrPolicia()">
+                                        Cerrar escáner
+                                    </button>
+                                </div>
 
                             </div>
 
@@ -1044,8 +1081,21 @@
             const tieneEvidencia = enSitio && servicio.tiene_evidencia === true;
 
             document.getElementById('formEvidenciaPolicial').hidden = !enSitio || tieneEvidencia;
+
             document.getElementById('evidenciaGuardadaPolicial').hidden = !tieneEvidencia;
-            document.getElementById('btnFinalizar').style.display = tieneEvidencia ? 'block' : 'none';
+
+            document.getElementById('btnFinalizar').style.display =
+                tieneEvidencia ? 'block' : 'none';
+
+            if (
+                !tieneEvidencia ||
+                (
+                    idAlertaLectorQr !== null &&
+                    idAlertaLectorQr !== idServicioActual
+                )
+            ) {
+                cerrarLectorQrPolicia();
+            }
         }
 
         async function cargarServicioActual() {
@@ -2614,246 +2664,295 @@
             }
         }
 
-        async function finalizarAtencion() {
+        let lectorQrPolicia = null;
+        let idAlertaLectorQr = null;
+        let iniciandoLectorQr = false;
+        let versionLectorQr = 0;
+
+        async function abrirLectorQrPolicia() {
+            await iniciarCamaraQrPolicia();
+        }
+
+        async function iniciarCamaraQrPolicia() {
+            const boton = document.getElementById('btnFinalizar');
+            const panel = document.getElementById('panelLectorQrPolicia');
+            const video = document.getElementById('videoQrPolicia');
+            const mensaje = document.getElementById('mensajeLectorQrPolicia');
+            const contenedor = document.getElementById('contenedorVideoQrPolicia');
 
             if (
                 !idServicioActual ||
-                operacionPoliciaEnCurso
+                operacionPoliciaEnCurso ||
+                iniciandoLectorQr ||
+                lectorQrPolicia ||
+                boton.style.display === 'none'
             ) {
                 return;
             }
 
+            const idAlerta = idServicioActual;
+            const version = ++versionLectorQr;
 
-            const boton =
-                document.getElementById(
-                    'btnFinalizar'
-                );
+            idAlertaLectorQr = idAlerta;
+            iniciandoLectorQr = true;
+            boton.disabled = true;
+            panel.hidden = false;
 
-
-            const mensaje =
-                document.getElementById(
-                    'mensajePolicia'
-                );
-
-
-            const confirmar =
-                window.confirm(
-                    '¿Confirmas que la atención de la emergencia ha terminado?'
-                );
-
-
-            if (!confirmar) {
-                return;
+            if (contenedor) {
+                contenedor.hidden = false;
             }
 
-
-            operacionPoliciaEnCurso =
-                true;
-
-
-            boton.disabled =
-                true;
-
-
-            boton.textContent =
-                'Finalizando...';
-
+            mensaje.style.color = '#252A30';
+            mensaje.textContent = 'Abriendo cámara...';
 
             try {
+                const modulo = await import(
+                    "{{ asset('js/vendor/qr-scanner/qr-scanner.min.js') }}"
+                );
 
-                const respuesta =
-                    await fetch(
-                        API +
-                        '/monitoreo/alertas/' +
-                        idServicioActual +
-                        '/cerrar', {
-
-                            method: 'POST',
-
-                            headers: {
-
-                                'Authorization': 'Bearer ' +
-                                    tokenPolicia,
-
-                                'Content-Type': 'application/json',
-
-                                'Accept': 'application/json'
-
-                            },
-
-                            body: JSON.stringify({
-
-                                observaciones: 'La atención de la alerta fue concluida por el policía.'
-
-                            })
-
-                        }
-                    );
-
-
-                const datos =
-                    await respuesta.json();
-
-
-                if (!respuesta.ok) {
-
-                    mensaje.style.color =
-                        '#9F2241';
-
-
-                    mensaje.textContent =
-                        datos.message ??
-                        'No fue posible cerrar la alerta.';
-
-
-                    boton.disabled =
-                        false;
-
-
-                    boton.textContent =
-                        'Finalizar atención';
-
-
+                if (
+                    version !== versionLectorQr ||
+                    idServicioActual !== idAlerta ||
+                    panel.hidden
+                ) {
                     return;
                 }
 
+                const QrScanner = modulo.default;
 
-                mensaje.style.color =
-                    '#235B4E';
+                const lector = new QrScanner(
+                    video,
+                    async function(resultado) {
+                        if (
+                            version !== versionLectorQr ||
+                            idServicioActual !== idAlerta ||
+                            operacionPoliciaEnCurso
+                        ) {
+                            return;
+                        }
 
-                mensaje.textContent = datos.message ?? 'Atención finalizada correctamente.';
+                        const codigo = resultado.data;
 
-                /*
-                 * Limpiar el servicio terminado.
-                 */
+                        if (
+                            typeof codigo !== 'string' ||
+                            !/^AIX-CIERRE:\d+:[a-f0-9]{64}$/.test(codigo)
+                        ) {
+                            mensaje.style.color = '#9F2241';
+                            mensaje.textContent = 'Ese QR no es un código de atención de ALERTA IXTA.';
+                            return;
+                        }
+
+                        if (!codigo.startsWith('AIX-CIERRE:' + idAlerta + ':')) {
+                            mensaje.style.color = '#9F2241';
+                            mensaje.textContent = 'Ese QR pertenece a otra alerta.';
+                            return;
+                        }
+
+                        cerrarLectorQrPolicia();
+
+                        await finalizarAtencion(codigo, idAlerta);
+                    }, {
+                        preferredCamera: 'environment',
+                        maxScansPerSecond: 3,
+                        highlightScanRegion: true,
+                        highlightCodeOutline: true,
+                        returnDetailedScanResult: true,
+                        onDecodeError: function() {
+                            // Es normal que algunos cuadros de la cámara no contengan un QR.
+                        }
+                    }
+                );
+
+                lectorQrPolicia = lector;
+
+                await lector.start();
 
                 if (
-                    marcadorAlerta
+                    version !== versionLectorQr ||
+                    lectorQrPolicia !== lector ||
+                    idServicioActual !== idAlerta
                 ) {
-
-                    mapaPolicia.removeLayer(
-                        marcadorAlerta
-                    );
-
-                    marcadorAlerta =
-                        null;
-
+                    lector.destroy();
+                    return;
                 }
 
-
-                if (
-                    rutaPolicia
-                ) {
-
-                    mapaPolicia.removeLayer(
-                        rutaPolicia
-                    );
-
-                    rutaPolicia =
-                        null;
-
+                mensaje.style.color = '#235B4E';
+                mensaje.textContent = 'Coloca el QR completo dentro del recuadro.';
+            } catch (error) {
+                if (version !== versionLectorQr) {
+                    return;
                 }
 
+                if (lectorQrPolicia) {
+                    lectorQrPolicia.destroy();
+                    lectorQrPolicia = null;
+                }
 
-                latitudDestino =
-                    null;
+                mensaje.style.color = '#9F2241';
 
+                if (error.name === 'NotAllowedError') {
+                    mensaje.textContent = 'Permite el acceso a la cámara e intenta nuevamente.';
+                } else if (error.name === 'NotFoundError') {
+                    mensaje.textContent = 'No se encontró una cámara disponible.';
+                } else {
+                    mensaje.textContent = 'No fue posible abrir el lector. Revisa que la cámara esté disponible e intenta nuevamente.';
+                }
+            } finally {
+                if (version === versionLectorQr) {
+                    iniciandoLectorQr = false;
+                    boton.disabled = false;
+                }
+            }
+        }
 
-                longitudDestino =
-                    null;
+        function cerrarLectorQrPolicia() {
+            versionLectorQr++;
+            iniciandoLectorQr = false;
+            idAlertaLectorQr = null;
 
+            if (lectorQrPolicia) {
+                lectorQrPolicia.destroy();
+                lectorQrPolicia = null;
+            }
 
-                idServicioActual =
-                    null;
+            const video = document.getElementById('videoQrPolicia');
+
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(function(pista) {
+                    pista.stop();
+                });
+            }
+
+            video.pause();
+            video.srcObject = null;
+
+            document.getElementById('panelLectorQrPolicia').hidden = true;
+            document.getElementById('btnFinalizar').disabled = operacionPoliciaEnCurso;
+        }
+
+        window.addEventListener('pagehide', cerrarLectorQrPolicia);
+
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                cerrarLectorQrPolicia();
+            }
+        });
+
+        document.getElementById('navPolicia')?.addEventListener(
+            'click',
+            cerrarLectorQrPolicia
+        );
+
+        async function finalizarAtencion(codigoQr, idAlerta) {
+            if (
+                !idAlerta ||
+                idServicioActual !== idAlerta ||
+                operacionPoliciaEnCurso ||
+                typeof codigoQr !== 'string' ||
+                !codigoQr
+            ) {
+                return;
+            }
+
+            const boton = document.getElementById('btnFinalizar');
+            const mensaje = document.getElementById('mensajePolicia');
+            let cierreCompletado = false;
+
+            cerrarLectorQrPolicia();
+
+            operacionPoliciaEnCurso = true;
+            ultimaConsultaServicio++;
+
+            boton.disabled = true;
+            boton.textContent = 'Validando QR...';
+            mensaje.style.color = '#252A30';
+            mensaje.textContent = 'Validando el QR y finalizando la atención...';
+
+            try {
+                const respuesta = await fetch(
+                    API + '/monitoreo/alertas/' + idAlerta + '/cerrar', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': 'Bearer ' + tokenPolicia,
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            codigo_qr: codigoQr,
+                            observaciones: 'El policía finalizó la atención mediante el QR del ciudadano.'
+                        })
+                    }
+                );
+
+                const datos = await respuesta.json();
+
+                if (idServicioActual !== idAlerta) {
+                    return;
+                }
+
+                if (!respuesta.ok) {
+                    mensaje.style.color = '#9F2241';
+                    mensaje.textContent = datos.errors?.codigo_qr?.[0] ??
+                        datos.message ??
+                        'No fue posible validar el QR.';
+                    return;
+                }
+
+                if (datos.alerta?.estado !== 'CERRADA') {
+                    mensaje.style.color = '#9F2241';
+                    mensaje.textContent = 'El servidor no confirmó el cierre. Consulta nuevamente el servicio.';
+                    return;
+                }
+
+                cierreCompletado = true;
+
+                mensaje.style.color = '#235B4E';
+                mensaje.textContent = datos.message ?? 'La alerta quedó cerrada correctamente.';
+
+                if (marcadorAlerta) {
+                    mapaPolicia.removeLayer(marcadorAlerta);
+                    marcadorAlerta = null;
+                }
+
+                if (rutaPolicia) {
+                    mapaPolicia.removeLayer(rutaPolicia);
+                    rutaPolicia = null;
+                }
+
+                latitudDestino = null;
+                longitudDestino = null;
+                idServicioActual = null;
+                idAlertaSeleccionada = null;
+
                 actualizarDisponibilidadVisual();
 
-                idAlertaSeleccionada =
-                    null;
+                document.getElementById('servicioActual').classList.add('oculto');
+                document.getElementById('detalleAlerta').classList.add('oculto');
 
-
-                document
-                    .getElementById(
-                        'servicioActual'
-                    )
-                    .classList
-                    .add('oculto');
-
-
-                document
-                    .getElementById(
-                        'detalleAlerta'
-                    )
-                    .classList
-                    .add('oculto');
-
-
-                boton.style.display =
-                    'none';
-
-
-                boton.disabled =
-                    false;
-
-
-                boton.textContent =
-                    'Finalizar atención';
-
-
-                /*
-                 * Después del servicio queda
-                 * únicamente el policía.
-                 */
+                boton.style.display = 'none';
 
                 if (
                     latitudPolicia !== null &&
                     longitudPolicia !== null
                 ) {
-
                     mapaPolicia.setView(
-                        [
-                            latitudPolicia,
-                            longitudPolicia
-                        ],
+                        [latitudPolicia, longitudPolicia],
                         16
                     );
-
                 }
-
-
-                await cargarAlertas();
-
-
             } catch (error) {
-
-                console.error(
-                    'Error cerrando alerta:',
-                    error
-                );
-
-
-                mensaje.style.color =
-                    '#9F2241';
-
-
-                mensaje.textContent =
-                    'No fue posible finalizar la atención. Intenta nuevamente.';
-
-
-                boton.disabled =
-                    false;
-
-
-                boton.textContent =
-                    'Finalizar atención';
-
-
+                mensaje.style.color = '#9F2241';
+                mensaje.textContent = 'No fue posible confirmar el cierre. Revisa la conexión y el estado de la alerta antes de intentar nuevamente.';
             } finally {
-
-                operacionPoliciaEnCurso =
-                    false;
-
+                operacionPoliciaEnCurso = false;
+                boton.disabled = false;
+                boton.textContent = 'Escanear QR y finalizar atención';
             }
 
+            if (cierreCompletado) {
+                await cargarServicioActual();
+                await cargarAlertas();
+            }
         }
 
         // Actualizar automáticamente las alertas pendientes.

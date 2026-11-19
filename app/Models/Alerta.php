@@ -12,6 +12,12 @@ class Alerta extends Model
 
     public $timestamps = false;
 
+    protected $hidden = [
+        'cierre_qr_hash',
+        'cierre_qr_expira_at',
+        'cierre_qr_usado_at',
+    ];
+
     protected $fillable = [
         'folio',
         'id_usuario',
@@ -29,6 +35,8 @@ class Alerta extends Model
             'latitud' => 'encrypted',
             'longitud' => 'encrypted',
             'fecha_hora' => 'datetime',
+            'cierre_qr_expira_at' => 'datetime',
+            'cierre_qr_usado_at' => 'datetime',
         ];
     }
 
