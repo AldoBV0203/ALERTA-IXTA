@@ -1143,10 +1143,14 @@
 
             <button
                 type="button"
-                id="menuVerificacionIdentidad"
+                id="menuCiudadanos"
                 class="menu-opcion"
-                onclick="mostrarSeccionMonitoreo('identidad')">
-                Verificación de identidad
+                onclick="mostrarSeccionMonitoreo('ciudadanos')">
+                <span>Ciudadanos</span>
+                <span
+                    class="contador-identidad"
+                    data-contador-identidad
+                    hidden></span>
             </button>
 
 
@@ -1562,15 +1566,14 @@
                             class="detalle-contenido"
                             id="detalleAlerta">
 
-
                             <div class="sin-seleccion">
 
                                 Seleccione una alerta de la tabla.
 
                             </div>
 
-
                         </div>
+                        @include('monitoreo.evidencia-policial')
 
                     </div>
 
@@ -1579,7 +1582,7 @@
 
             </div>
 
-            @include('monitoreo.verificacion-identidad')
+            @include('monitoreo.ciudadanos')
 
         </main>
 
@@ -1624,6 +1627,7 @@
 
         let idAlertaSeleccionada =
             null;
+        let ultimoDetalleConsultado = null;
 
         let ajustarVistaRuta =
             false;
@@ -1852,7 +1856,7 @@
 
             cargarAlertas();
             cargarSolicitudesCancelacion();
-
+            cargarResumenCiudadanos();
         }
 
 
@@ -3031,7 +3035,6 @@
         }
 
         //DETALLE
-
         async function cargarDetalle(
             idAlerta
         ) {
@@ -3086,13 +3089,18 @@
 
             const alerta =
                 datos.alerta;
-
+            ultimoDetalleConsultado = alerta;
+            actualizarEvidenciaMonitoreo(alerta);
 
             const detalle =
                 document.getElementById(
                     'detalleAlerta'
                 );
 
+            const historialAnterior =
+                detalle.dataset.idAlerta === String(idAlerta) ?
+                document.getElementById('historialAlerta') :
+                null;
 
             detalle.innerHTML =
                 `
@@ -3186,6 +3194,13 @@
 
             </div>
             `;
+
+            detalle.dataset.idAlerta = String(idAlerta);
+
+            if (historialAnterior) {
+                document.getElementById('historialAlerta')
+                    .replaceWith(historialAnterior);
+            }
 
             // Mostrar ubicación y ruta solamente si la alerta sigue activa.
             if (
@@ -3524,6 +3539,12 @@
             const datos =
                 await respuesta.json();
 
+            if (
+                Number(idAlerta) !== Number(idAlertaSeleccionada) ||
+                document.getElementById('detalleAlerta').dataset.idAlerta !== String(idAlerta)
+            ) {
+                return;
+            }
 
             if (!respuesta.ok) {
                 return;
@@ -3687,33 +3708,27 @@
 
         }
 
-
-
         //recarga automatica
 
-        setInterval(
-            function() {
+        setInterval(function() {
+            if (!tokenMonitoreo) {
+                return;
+            }
 
-                if (
-                    tokenMonitoreo
-                ) {
+            cargarAlertas();
+            cargarSolicitudesCancelacion();
 
-                    cargarAlertas();
-                    cargarSolicitudesCancelacion();
+            const detalleFinalizado =
+                ultimoDetalleConsultado &&
+                Number(ultimoDetalleConsultado.id_alerta) ===
+                Number(idAlertaSeleccionada) && ['CERRADA', 'CANCELADA'].includes(
+                    ultimoDetalleConsultado.estado
+                );
 
-                    if (
-                        idAlertaSeleccionada !== null
-                    ) {
-                        cargarDetalle(
-                            idAlertaSeleccionada
-                        );
-                    }
-
-                }
-
-            },
-            5000
-        );
+            if (idAlertaSeleccionada !== null && !detalleFinalizado) {
+                cargarDetalle(idAlertaSeleccionada);
+            }
+        }, 5000);
 
 
 

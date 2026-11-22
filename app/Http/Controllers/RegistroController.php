@@ -7,6 +7,7 @@ use App\Services\CurpService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class RegistroController extends Controller
 {
@@ -133,17 +134,30 @@ class RegistroController extends Controller
         }
 
         try {
-            User::create([
-                'name' => trim($request->name),
-                'curp' => $curp,
-                'curp_lookup' => $curpLookup,
-                'telefono' => $request->telefono,
-                'email' => $request->email ?: null,
-                'password' => $request->password,
-                'ine_foto_path' => $rutaIne,
-                'estatus' => 'ACTIVO',
-                'estatus_verificacion' => 'PENDIENTE',
-            ]);
+            DB::transaction(function () use (
+                $request,
+                $curp,
+                $curpLookup,
+                $rutaIne,
+                $curpService
+            ) {
+                $ciudadano = User::create([
+                    'name' => trim($request->name),
+                    'curp' => $curp,
+                    'curp_lookup' => $curpLookup,
+                    'telefono' => $request->telefono,
+                    'email' => $request->email ?: null,
+                    'password' => $request->password,
+                    'ine_foto_path' => $rutaIne,
+                    'estatus' => 'ACTIVO',
+                    'estatus_verificacion' => 'PENDIENTE',
+                ]);
+
+                $curpService->indexarPrefijos(
+                    (int) $ciudadano->id,
+                    $curp
+                );
+            });
         } catch (\Throwable $error) {
             Storage::disk('local')->delete($rutaIne);
             report($error);

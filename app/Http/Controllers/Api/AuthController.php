@@ -70,18 +70,32 @@ class AuthController extends Controller
             ], 409);
         }
 
-    /* Crear usuario. User.php cifra automáticamente: curp, name, email y telefono.También hashea password. */
+        /* Crear usuario. User.php cifra automáticamente: curp, name, email y telefono.También hashea password. */
 
-        $usuario = User::create([
-            'name' => trim($datos['name']),
-            'curp' => $curp,
-            'curp_lookup' => $curpLookup,
-            'telefono' => $datos['telefono'],
-            'email' => $datos['email'] ?? null,
-            'password' => $datos['password'],
-            'estatus' => 'ACTIVO',
-            'estatus_verificacion' => 'PENDIENTE',
-        ]);
+        $usuario = DB::transaction(function () use (
+            $datos,
+            $curp,
+            $curpLookup,
+            $curpService
+        ) {
+            $ciudadano = User::create([
+                'name' => trim($datos['name']),
+                'curp' => $curp,
+                'curp_lookup' => $curpLookup,
+                'telefono' => $datos['telefono'],
+                'email' => $datos['email'] ?? null,
+                'password' => $datos['password'],
+                'estatus' => 'ACTIVO',
+                'estatus_verificacion' => 'PENDIENTE',
+            ]);
+
+            $curpService->indexarPrefijos(
+                (int) $ciudadano->id,
+                $curp
+            );
+
+            return $ciudadano;
+        });
 
         return response()->json([
             'message' => 'Usuario registrado correctamente.',

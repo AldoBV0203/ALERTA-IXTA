@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\MonitoreoController;
 use App\Http\Controllers\Api\PoliciaController;
 use App\Http\Controllers\Api\SolicitudCancelacionController;
 use App\Http\Controllers\Api\VerificacionIdentidadController;
+use App\Http\Controllers\Api\CiudadanoController;
 
 
 //Rutas públicas
@@ -18,6 +19,10 @@ Route::post('/registro', [AuthController::class, 'registro']);
 Route::post('/login', [AuthController::class, 'login']);
 
 Route::post('/personal/registro', [PersonalAuthController::class, 'registro']);
+Route::post('/personal/registro-policia', [
+    PersonalAuthController::class,
+    'registroPolicia',
+])->middleware('throttle:5,1,registro-policia:');
 
 Route::post('/personal/login', [PersonalAuthController::class, 'login']);
 
@@ -55,6 +60,23 @@ Route::middleware('auth:sanctum')->group(function () {
         AlertaController::class,
         'misAlertas'
     ]);
+
+    Route::get('/monitoreo/ciudadanos/resumen', [
+        CiudadanoController::class,
+        'resumen',
+    ])->middleware('throttle:30,1,ciudadanos-resumen:');
+
+    Route::get('/monitoreo/ciudadanos', [
+        CiudadanoController::class,
+        'index',
+    ])->middleware('throttle:120,1,ciudadanos-listado:');
+
+    Route::get('/monitoreo/ciudadanos/{id}', [
+        CiudadanoController::class,
+        'detalle',
+    ])
+        ->whereNumber('id')
+        ->middleware('throttle:60,1,ciudadanos-detalle:');
 
     Route::get('/monitoreo/verificaciones-identidad', [
         VerificacionIdentidadController::class,
@@ -120,6 +142,11 @@ Route::middleware('auth:sanctum')->group(function () {
         MonitoreoController::class,
         'seguimiento'
     ]);
+
+    Route::get('/monitoreo/alertas/{id}/evidencia', [
+        MonitoreoController::class,
+        'verEvidenciaPolicial',
+    ])->whereNumber('id');
 
     Route::post('/monitoreo/alertas/{id}/evidencia', [
         MonitoreoController::class,

@@ -32,25 +32,56 @@
     let consultaVerificacionesIdentidad = null;
 
     function mostrarSeccionMonitoreo(seccion) {
+        const verListado = seccion === 'ciudadanos';
         const verIdentidad = seccion === 'identidad';
+        const verCiudadanos = verListado || verIdentidad;
 
-        document.getElementById('panelGeneralMonitoreo').hidden = verIdentidad;
+        document.getElementById('panelGeneralMonitoreo').hidden =
+            verCiudadanos;
+
+        document.getElementById('panelCiudadanosMonitoreo').hidden = !verCiudadanos;
+
+        document.getElementById('vistaListadoCiudadanos').hidden = !verListado;
+
         document.getElementById('panelVerificacionIdentidad').hidden = !verIdentidad;
 
         document.getElementById('menuPanelGeneral')
-            .classList.toggle('activa', !verIdentidad);
+            .classList.toggle('activa', !verCiudadanos);
 
-        document.getElementById('menuVerificacionIdentidad')
-            .classList.toggle('activa', verIdentidad);
+        document.getElementById('menuCiudadanos')
+            .classList.toggle('activa', verCiudadanos);
 
+        const listado = document.getElementById('btnListadoCiudadanos');
+        const identidad = document.getElementById('menuVerificacionIdentidad');
+
+        listado.classList.toggle('activa', verListado);
+        listado.setAttribute('aria-pressed', String(verListado));
+
+        identidad.classList.toggle('activa', verIdentidad);
+        identidad.setAttribute('aria-pressed', String(verIdentidad));
 
         if (verIdentidad) {
+            consultaResumenCiudadanos?.abort();
+            consultaResumenCiudadanos = null;
+
             cargarVerificacionesIdentidad();
+        } else {
+            consultaVerificacionesIdentidad?.abort();
+            consultaVerificacionesIdentidad = null;
+
+            if (verListado) {
+                cargarCiudadanos(paginaCiudadanos);
+            }
+
+            cargarResumenCiudadanos();
         }
-        if (!verIdentidad && mapaMonitoreo) {
-            requestAnimationFrame(() => mapaMonitoreo.invalidateSize({
-                pan: false
-            }));
+
+        if (!verCiudadanos && mapaMonitoreo) {
+            requestAnimationFrame(() => {
+                mapaMonitoreo.invalidateSize({
+                    pan: false
+                });
+            });
         }
     }
 
@@ -104,12 +135,15 @@
                 return;
             }
 
-            const { ciudadanos } = await respuesta.json();
+            const {
+                ciudadanos
+            } = await respuesta.json();
 
             if (consulta.signal.aborted) {
                 return;
             }
 
+            actualizarContadoresIdentidad(ciudadanos.length);
             if (ciudadanos.length === 0) {
                 lista.textContent = 'No hay verificaciones pendientes.';
                 return;

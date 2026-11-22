@@ -17,6 +17,17 @@ class Operador extends Authenticatable
 
     protected $fillable = [
         'nombre',
+        'curp',
+        'curp_lookup',
+        'telefono',
+        'numero_empleado',
+        'numero_placa',
+        'cuip',
+        'cuip_lookup',
+        'grado',
+        'adscripcion',
+        'numero_patrulla',
+        'tipo_solicitud',
         'usuario',
         'password_hash',
         'rol',
@@ -30,6 +41,17 @@ class Operador extends Authenticatable
 
     protected $hidden = [
         'password_hash',
+        'curp',
+        'curp_lookup',
+        'telefono',
+        'numero_empleado',
+        'numero_placa',
+        'cuip',
+        'cuip_lookup',
+        'grado',
+        'adscripcion',
+        'numero_patrulla',
+        'tipo_solicitud',
     ];
 
     protected function casts(): array
@@ -37,6 +59,9 @@ class Operador extends Authenticatable
         return [
             'activo' => 'boolean',
             'disponible' => 'boolean',
+            'curp' => 'encrypted',
+            'telefono' => 'encrypted',
+            'cuip' => 'encrypted',
 
             'latitud_actual' => 'encrypted',
             'longitud_actual' => 'encrypted',

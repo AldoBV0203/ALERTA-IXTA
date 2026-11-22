@@ -215,6 +215,23 @@
         #btnFinalizar:hover:not(:disabled) {
             background: #9F2241;
         }
+
+        #loginPolicia .registro-pie-policia {
+            margin: 24px 0 0;
+            text-align: center;
+            font-size: 13px;
+            color: #62676C;
+        }
+
+        #loginPolicia .registro-pie-policia a {
+            color: #691C32;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        #loginPolicia .registro-pie-policia a:hover {
+            text-decoration: underline;
+        }
     </style>
 
 </head>
@@ -257,16 +274,20 @@
                     </h2>
 
                     <div class="campo">
-
-                        <label>
-                            Usuario
+                        <label for="cuipPolicia">
+                            CUIP
                         </label>
 
                         <input
                             type="text"
-                            id="usuarioPolicia"
-                            placeholder="Usuario">
-
+                            id="cuipPolicia"
+                            placeholder="Ingresa tu CUIP"
+                            maxlength="50"
+                            autocomplete="username"
+                            autocapitalize="characters"
+                            spellcheck="false"
+                            style="text-transform: uppercase;"
+                            required>
                     </div>
 
                     <div class="campo">
@@ -295,6 +316,11 @@
                         id="mensajeLoginPolicia"
                         class="mensaje">
                     </div>
+
+                    <p class="registro-pie-policia">
+                        ¿No tienes cuenta?
+                        <a href="{{ route('registro.policia') }}">Registrarme</a>
+                    </p>
 
                 </div>
 
@@ -808,13 +834,11 @@
 
         async function iniciarSesionPolicia() {
 
-            const usuario =
-                document
-                .getElementById(
-                    'usuarioPolicia'
-                )
+            const cuip = document
+                .getElementById('cuipPolicia')
                 .value
-                .trim();
+                .trim()
+                .toUpperCase();
 
             const password =
                 document
@@ -828,15 +852,8 @@
                     'mensajeLoginPolicia'
                 );
 
-
-            if (
-                usuario === '' ||
-                password === ''
-            ) {
-
-                mensaje.textContent =
-                    'Ingresa usuario y contraseña.';
-
+            if (cuip === '' || password === '') {
+                mensaje.textContent = 'Ingresa tu CUIP y contraseña.';
                 return;
             }
 
@@ -854,7 +871,7 @@
                         },
 
                         body: JSON.stringify({
-                            usuario: usuario,
+                            cuip: cuip,
                             password: password
                         })
                     }

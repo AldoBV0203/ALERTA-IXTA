@@ -4,6 +4,7 @@ namespace App\Services;
 
 use InvalidArgumentException;
 use RuntimeException;
+use Illuminate\Support\Facades\DB;
 
 class CurpService
 {
@@ -12,22 +13,50 @@ class CurpService
     NE corresponde a nacido en el extranjero.
      */
     private const ENTIDADES = [
-        'AS', 'BC', 'BS', 'CC', 'CL', 'CM', 'CS', 'CH',
-        'DF', 'DG', 'GT', 'GR', 'HG', 'JC', 'MC', 'MN',
-        'MS', 'NT', 'NL', 'OC', 'PL', 'QT', 'QR', 'SP',
-        'SL', 'SR', 'TC', 'TS', 'TL', 'VZ', 'YN', 'ZS',
+        'AS',
+        'BC',
+        'BS',
+        'CC',
+        'CL',
+        'CM',
+        'CS',
+        'CH',
+        'DF',
+        'DG',
+        'GT',
+        'GR',
+        'HG',
+        'JC',
+        'MC',
+        'MN',
+        'MS',
+        'NT',
+        'NL',
+        'OC',
+        'PL',
+        'QT',
+        'QR',
+        'SP',
+        'SL',
+        'SR',
+        'TC',
+        'TS',
+        'TL',
+        'VZ',
+        'YN',
+        'ZS',
         'NE',
     ];
 
     // Normaliza la CURP antes de trabajar con ella.
-    
+
     public function normalizar(string $curp): string
     {
         return strtoupper(trim($curp));
     }
 
     // Comprueba estructura, fecha, entidad y dígito verificador.
-   
+
     public function esValida(string $curp): bool
     {
         $curp = $this->normalizar($curp);
@@ -44,12 +73,12 @@ class CurpService
          dígito verificador
          */
         $patron = '/^[A-Z][AEIOU][A-Z]{2}' .
-                  '\d{6}' .
-                  '[HM]' .
-                  '[A-Z]{2}' .
-                  '[B-DF-HJ-NP-TV-Z]{3}' .
-                  '[0-9A-J]' .
-                  '\d$/';
+            '\d{6}' .
+            '[HM]' .
+            '[A-Z]{2}' .
+            '[B-DF-HJ-NP-TV-Z]{3}' .
+            '[0-9A-J]' .
+            '\d$/';
 
         if (!preg_match($patron, $curp)) {
             return false;
@@ -104,9 +133,9 @@ class CurpService
         return $curp[17] === $digitoEsperado;
     }
 
-    
+
     // Genera el HMAC que utilizaremos para buscar la CURP sin almacenarla en texto plano.
-     
+
     public function generarLookup(string $curp): string
     {
         $curp = $this->normalizar($curp);
@@ -132,9 +161,59 @@ class CurpService
         );
     }
 
-    
+    public function generarLookupPrefijo(string $prefijo): string
+    {
+        $prefijo = $this->normalizar($prefijo);
+
+        if (!preg_match('/^[A-Z0-9]{1,18}$/', $prefijo)) {
+            throw new InvalidArgumentException(
+                'El inicio de la CURP debe tener entre 1 y 18 letras o números.'
+            );
+        }
+
+        $clave = config('services.alerta_ixta.curp_index_key');
+
+        if (empty($clave)) {
+            throw new RuntimeException(
+                'No se encuentra configurada CURP_INDEX_KEY.'
+            );
+        }
+
+        $texto = 'curp-prefijo:v1:' . strlen($prefijo) . ':' . $prefijo;
+
+        return hash_hmac('sha256', $texto, $clave);
+    }
+
+    public function indexarPrefijos(int $idUsuario, string $curp): void
+    {
+        $curp = $this->normalizar($curp);
+
+        if (!preg_match('/^[A-Z0-9]{18}$/', $curp)) {
+            throw new InvalidArgumentException(
+                'La CURP para indexar debe contener 18 letras o números.'
+            );
+        }
+
+        $filas = [];
+
+        for ($longitud = 1; $longitud <= 18; $longitud++) {
+            $filas[] = [
+                'id_usuario' => $idUsuario,
+                'longitud' => $longitud,
+                'prefijo_hash' => $this->generarLookupPrefijo(
+                    substr($curp, 0, $longitud)
+                ),
+            ];
+        }
+
+        DB::table('curp_prefijos')->upsert(
+            $filas,
+            ['id_usuario', 'longitud'],
+            ['prefijo_hash']
+        );
+    }
+
     //Calcula el dígito verificador de la CURP.
-     
     private function calcularDigitoVerificador(string $base): string
     {
         $diccionario = preg_split(

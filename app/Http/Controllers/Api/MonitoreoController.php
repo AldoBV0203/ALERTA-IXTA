@@ -290,6 +290,13 @@ class MonitoreoController extends Controller
             }
         }
 
+        $evidencia = SeguimientoAlerta::with('operador:id_operador,nombre')
+            ->where('id_alerta', $alerta->id_alerta)
+            ->where('accion', 'EVIDENCIA_POLICIAL')
+            ->whereNotNull('evidencia_foto_path')
+            ->orderByDesc('id')
+            ->first(['id', 'id_alerta', 'id_operador', 'fecha_hora']);
+
         return response()->json([
             'alerta' => [
                 'id_alerta' => $alerta->id_alerta,
@@ -317,6 +324,12 @@ class MonitoreoController extends Controller
                 ],
                 'policia' =>
                 $policiaAsignado,
+
+                'evidencia' => $evidencia ? [
+                    'id' => $evidencia->id,
+                    'policia' => $evidencia->operador?->nombre ?? 'Personal no disponible',
+                    'fecha_hora' => $evidencia->fecha_hora?->toIso8601String(),
+                ] : null,
             ],
         ]);
     }
@@ -742,6 +755,52 @@ class MonitoreoController extends Controller
                 'operador' => $personal->nombre,
             ],
         ], 201);
+    }
+
+    public function verEvidenciaPolicial(Request $request, int $id)
+    {
+        $personal = $request->user();
+
+        abort_unless(
+            $personal instanceof Operador &&
+                $personal->activo &&
+                in_array(
+                    $personal->rol,
+                    ['OPERADOR', 'SUPERVISOR', 'ADMINISTRADOR'],
+                    true
+                ),
+            403,
+            'No tienes permiso para consultar evidencias.'
+        );
+
+        Alerta::whereKey($id)->firstOrFail(['id_alerta']);
+
+        $evidencia = SeguimientoAlerta::where('id_alerta', $id)
+            ->where('accion', 'EVIDENCIA_POLICIAL')
+            ->whereNotNull('evidencia_foto_path')
+            ->orderByDesc('id')
+            ->first();
+
+        abort_unless(
+            $evidencia,
+            404,
+            'Esta alerta no tiene una fotografía de evidencia.'
+        );
+
+        /** @var \Illuminate\Filesystem\FilesystemAdapter $disco */
+        $disco = Storage::disk('local');
+        $ruta = $evidencia->evidencia_foto_path;
+
+        abort_unless(
+            $disco->exists($ruta),
+            404,
+            'No se encontró el archivo de evidencia.'
+        );
+
+        return $disco->response($ruta, null, [
+            'Cache-Control' => 'private, no-store',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     public function guardarEvidenciaPolicial(Request $request, int $id)
