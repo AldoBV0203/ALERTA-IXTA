@@ -99,6 +99,7 @@ class PersonalAuthController extends Controller
             'nombre' => 'required|string|max:100',
             'curp' => 'required|string|size:18',
             'telefono' => 'required|string|regex:/^[0-9]{10}$/',
+            'email' => 'required|email|max:150',
             'numero_empleado' =>
             'required|string|max:30|unique:operadores,numero_empleado',
             'numero_placa' => 'required|string|max:30',
@@ -118,6 +119,8 @@ class PersonalAuthController extends Controller
             'curp.size' => 'La CURP debe contener 18 caracteres.',
             'telefono.required' => 'El teléfono es obligatorio.',
             'telefono.regex' => 'El teléfono debe contener 10 números.',
+            'email.required' => 'Escribe tu correo electrónico.',
+            'email.email' => 'Escribe un correo electrónico válido.',
             'numero_empleado.required' => 'Escribe tu número de empleado.',
             'numero_empleado.unique' =>
             'Ese número de empleado ya está registrado.',
@@ -160,12 +163,29 @@ class PersonalAuthController extends Controller
             ]);
         }
 
+        $email = strtolower(trim($datos['email']));
+
+        $emailLookup = hash_hmac(
+            'sha256',
+            $email,
+            config('app.key')
+        );
+
+        if (Operador::where('email_lookup', $emailLookup)->exists()) {
+            throw ValidationException::withMessages([
+                'email' => 'Ese correo electrónico ya está registrado.',
+            ]);
+        }
+
         try {
             $operador = Operador::create([
                 'nombre' => trim($datos['nombre']),
                 'curp' => $curp,
                 'curp_lookup' => $curpLookup,
                 'telefono' => $datos['telefono'],
+                'email' => $email,
+                'email_lookup' => $emailLookup,
+                'email_verified_at' => null,
                 'numero_empleado' => $datos['numero_empleado'],
                 'numero_placa' => $datos['numero_placa'],
                 'cuip' => $cuip,

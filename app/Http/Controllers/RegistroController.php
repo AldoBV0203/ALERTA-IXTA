@@ -43,7 +43,7 @@ class RegistroController extends Controller
             ],
 
             'email' => [
-                'nullable',
+                'required',
                 'email',
                 'max:150',
             ],
@@ -72,6 +72,7 @@ class RegistroController extends Controller
             'telefono.regex' => 'El teléfono debe contener 10 números.',
 
             'email.email' => 'Ingresa un correo electrónico válido.',
+            'email.required' => 'El correo electrónico es obligatorio.',
 
             'password.required' => 'La contraseña es obligatoria.',
             'password.confirmed' => 'Las contraseñas no coinciden.',
@@ -114,6 +115,30 @@ class RegistroController extends Controller
                 ->withInput();
         }
 
+        $email = strtolower(trim($request->input('email')));
+
+        $emailLookup = hash_hmac(
+            'sha256',
+            $email,
+            config('app.key')
+        );
+
+        if (User::where('email_lookup', $emailLookup)->exists()) {
+            return back()
+                ->withErrors([
+                    'email' => 'Ese correo electrónico ya está registrado.',
+                ])
+                ->withInput($request->only([
+                    'name',
+                    'curp',
+                    'telefono',
+                    'email',
+                ]));
+        }
+
+        /*
+        Crear usuario.
+
         /*
          Crear usuario.
          
@@ -134,19 +159,22 @@ class RegistroController extends Controller
         }
 
         try {
-            DB::transaction(function () use (
+            $ciudadano = DB::transaction(function () use (
                 $request,
                 $curp,
                 $curpLookup,
                 $rutaIne,
-                $curpService
+                $curpService,
+                $email,
+                $emailLookup
             ) {
                 $ciudadano = User::create([
                     'name' => trim($request->name),
                     'curp' => $curp,
                     'curp_lookup' => $curpLookup,
                     'telefono' => $request->telefono,
-                    'email' => $request->email ?: null,
+                    'email' => $email,
+                    'email_lookup' => $emailLookup,
                     'password' => $request->password,
                     'ine_foto_path' => $rutaIne,
                     'estatus' => 'ACTIVO',
@@ -157,6 +185,7 @@ class RegistroController extends Controller
                     (int) $ciudadano->id,
                     $curp
                 );
+                return $ciudadano;
             });
         } catch (\Throwable $error) {
             Storage::disk('local')->delete($rutaIne);
@@ -165,6 +194,19 @@ class RegistroController extends Controller
             return back()
                 ->withErrors(['ine_foto' => 'No se pudo completar el registro. Intenta nuevamente.'])
                 ->withInput($request->only(['name', 'curp', 'telefono', 'email']));
+        }
+
+        try {
+            $ciudadano->sendEmailVerificationNotification();
+        } catch (\Throwable $error) {
+            report($error);
+
+            return redirect()
+                ->route('login')
+                ->with(
+                    'success',
+                    'Tu cuenta fue registrada, pero no pudimos enviar el correo de verificación. Podrás solicitar otro enlace.'
+                );
         }
 
         return redirect()

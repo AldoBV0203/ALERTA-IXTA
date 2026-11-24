@@ -219,6 +219,19 @@
                                 required>
                             <small class="error" data-error="telefono"></small>
                         </div>
+
+                        <div class="campo">
+                            <label for="registroEmailPolicia">Correo electrónico</label>
+                            <input
+                                id="registroEmailPolicia"
+                                name="email"
+                                type="email"
+                                autocomplete="email"
+                                maxlength="150"
+                                placeholder="Ingresa tu correo electrónico"
+                                required>
+                            <small class="error" data-error="email"></small>
+                        </div>
                     </fieldset>
 
                     <fieldset>
@@ -251,7 +264,7 @@
                                     type="text"
                                     maxlength="30"
                                     placeholder="Número de placa"
-                                    required>                                
+                                    required>
                                 <small
                                     class="error"
                                     data-error="numero_placa"></small>
@@ -266,9 +279,9 @@
                                 type="text"
                                 maxlength="50"
                                 placeholder="Clave Única de Identificación Permanente"
-                                required>                          
+                                required>
                             <small class="error" data-error="cuip"></small>
-                        </div>                        
+                        </div>
 
                         <div class="campo">
                             <label for="registroAdscripcionPolicia">
@@ -280,7 +293,7 @@
                                 type="text"
                                 maxlength="120"
                                 placeholder="Área o agrupamiento al que perteneces"
-                                required>                          
+                                required>
                             <small class="error" data-error="adscripcion"></small>
                         </div>
 
@@ -302,7 +315,7 @@
                     </fieldset>
 
                     <fieldset>
-                        <legend>Datos de acceso</legend>                        
+                        <legend>Datos de acceso</legend>
 
                         <div class="campo">
                             <label for="registroPasswordPolicia">Contraseña</label>
@@ -350,7 +363,7 @@
                         <a href="{{ route('policia') }}">Iniciar sesión</a>
                     </p>
                 </form>
-                
+
             </main>
         </div>
     </div>

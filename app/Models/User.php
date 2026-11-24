@@ -7,19 +7,21 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
     // Campos que Laravel puede guardar mediante asignación masiva.
-     
+
     protected $fillable = [
         'curp',
         'curp_lookup',
         'name',
         'email',
+        'email_lookup',
         'telefono',
         'password',
         'estatus',
@@ -29,19 +31,20 @@ class User extends Authenticatable
         'ine_foto_path',
     ];
 
-    
+
     // Campos que no deben aparecer cuando el usuario se convierta a JSON o se envíe mediante la API.
-    
+
     protected $hidden = [
         'password',
         'remember_token',
         'curp_lookup',
         'ine_foto_path',
+        'email_lookup',
     ];
 
-    
+
     // Conversión y protección automática de atributos.
-    
+
     protected function casts(): array
     {
         return [
@@ -57,5 +60,11 @@ class User extends Authenticatable
             'identidad_verificada_at' => 'datetime',
         ];
     }
-}
 
+    public function sendEmailVerificationNotification()
+    {
+        $this->notify(
+            new \App\Notifications\VerificarCorreoCiudadano()
+        );
+    }
+}

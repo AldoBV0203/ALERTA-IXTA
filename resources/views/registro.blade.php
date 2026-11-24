@@ -173,7 +173,8 @@
                             type="email"
                             name="email"
                             value="{{ old('email') }}"
-                            placeholder="Opcional">
+                            placeholder="Ingresa tu correo electronico"
+                            required>
 
                         @error('email')
 

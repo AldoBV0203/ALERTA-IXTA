@@ -33,7 +33,7 @@ class AuthController extends Controller
             ],
 
             'email' => [
-                'nullable',
+                'required',
                 'email',
                 'max:150',
             ],
@@ -70,20 +70,40 @@ class AuthController extends Controller
             ], 409);
         }
 
+        $email = strtolower(trim($datos['email']));
+
+        $emailLookup = hash_hmac(
+            'sha256',
+            $email,
+            config('app.key')
+        );
+
+        if (User::where('email_lookup', $emailLookup)->exists()) {
+            return response()->json([
+                'message' => 'Ese correo electrónico ya está registrado.',
+                'errors' => [
+                    'email' => ['Ese correo electrónico ya está registrado.'],
+                ],
+            ], 422);
+        }
+
         /* Crear usuario. User.php cifra automáticamente: curp, name, email y telefono.También hashea password. */
 
         $usuario = DB::transaction(function () use (
             $datos,
             $curp,
             $curpLookup,
-            $curpService
+            $curpService,
+            $email,
+            $emailLookup
         ) {
             $ciudadano = User::create([
                 'name' => trim($datos['name']),
                 'curp' => $curp,
                 'curp_lookup' => $curpLookup,
                 'telefono' => $datos['telefono'],
-                'email' => $datos['email'] ?? null,
+                'email' => $email,
+                'email_lookup' => $emailLookup,
                 'password' => $datos['password'],
                 'estatus' => 'ACTIVO',
                 'estatus_verificacion' => 'PENDIENTE',

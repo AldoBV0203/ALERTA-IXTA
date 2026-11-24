@@ -119,8 +119,8 @@
     }
 
     #panelCiudadanosMonitoreo .ciudadanos-boton-secundario {
-        background: #FFFFFF;
-        color: #691C32;
+        background: #691C32;
+        color: #FFFFFF;
     }
 
     #panelCiudadanosMonitoreo .ciudadanos-boton:hover:not(:disabled) {
