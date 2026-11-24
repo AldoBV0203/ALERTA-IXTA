@@ -284,9 +284,8 @@
                             placeholder="Ingresa tu CUIP"
                             maxlength="50"
                             autocomplete="username"
-                            autocapitalize="characters"
+                            autocapitalize="off"
                             spellcheck="false"
-                            style="text-transform: uppercase;"
                             required>
                     </div>
 
@@ -834,11 +833,10 @@
 
         async function iniciarSesionPolicia() {
 
-            const cuip = document
+            const identificador = document
                 .getElementById('cuipPolicia')
                 .value
-                .trim()
-                .toUpperCase();
+                .trim();
 
             const password =
                 document
@@ -852,7 +850,7 @@
                     'mensajeLoginPolicia'
                 );
 
-            if (cuip === '' || password === '') {
+            if (identificador === '' || password === '') {
                 mensaje.textContent = 'Ingresa tu CUIP y contraseña.';
                 return;
             }
@@ -870,10 +868,17 @@
                             'Accept': 'application/json'
                         },
 
-                        body: JSON.stringify({
-                            cuip: cuip,
-                            password: password
-                        })
+                        body: JSON.stringify(
+                            identificador.toLowerCase().startsWith('policia.') ?
+                            {
+                                usuario: identificador.toLowerCase(),
+                                password: password
+                            } :
+                            {
+                                cuip: identificador.toUpperCase(),
+                                password: password
+                            }
+                        )
                     }
                 );
 

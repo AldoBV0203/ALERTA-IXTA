@@ -19,6 +19,7 @@ class CiudadanoController extends Controller
             'curp' => 'nullable|string|max:18|regex:/^[A-Za-z0-9]+$/',
             'verificacion' => 'nullable|in:PENDIENTE,VERIFICADA,RECHAZADA',
             'page' => 'sometimes|integer|min:1',
+            'por_pagina' => 'sometimes|integer|min:20|max:100',
         ], [
             'curp.max' => 'La CURP puede tener hasta 18 caracteres.',
             'curp.regex' => 'Escribe únicamente letras y números.',
@@ -50,7 +51,7 @@ class CiudadanoController extends Controller
 
         $pagina = $consulta
             ->orderByDesc('id')
-            ->paginate(20, [
+            ->paginate($datos['por_pagina'] ?? 20, [
                 'id',
                 'name',
                 'curp',
@@ -123,6 +124,52 @@ class CiudadanoController extends Controller
                     : null,
                 'fecha_registro' => $ciudadano->created_at?->toIso8601String(),
                 'identidad_verificada_at' => $ciudadano->identidad_verificada_at?->toIso8601String(),
+            ],
+        ], 200, [
+            'Cache-Control' => 'private, no-store',
+        ]);
+    }
+
+    public function actualizar(Request $request, int $id)
+    {
+        $this->verificarPermiso($request);
+
+        $datos = $request->validate([
+            'nombre' => ['required', 'string', 'max:100'],
+            'telefono' => ['required', 'regex:/^[0-9]{10}$/'],
+        ], [
+            'telefono.regex' => 'El teléfono debe tener 10 dígitos.',
+        ]);
+
+        $nombre = trim($datos['nombre']);
+
+        if ($nombre === '') {
+            return response()->json([
+                'message' => 'Escribe el nombre completo.',
+                'errors' => [
+                    'nombre' => ['Escribe el nombre completo.'],
+                ],
+            ], 422);
+        }
+
+        $ciudadano = DB::transaction(function () use ($id, $nombre, $datos) {
+            $ciudadano = User::whereKey($id)->lockForUpdate()->firstOrFail();
+
+            $ciudadano->name = $nombre;
+            $ciudadano->telefono = $datos['telefono'];
+
+            $ciudadano->save();
+
+            return $ciudadano;
+        });
+
+        return response()->json([
+            'message' => 'Datos actualizados correctamente.',
+            'ciudadano' => [
+                'id' => $ciudadano->id,
+                'nombre' => $ciudadano->name,
+                'telefono' => $ciudadano->telefono,
+                'estatus_verificacion' => $ciudadano->estatus_verificacion,
             ],
         ], 200, [
             'Cache-Control' => 'private, no-store',

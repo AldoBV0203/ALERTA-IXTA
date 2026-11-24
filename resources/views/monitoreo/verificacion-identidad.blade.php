@@ -35,21 +35,27 @@
         const verListado = seccion === 'ciudadanos';
         const verIdentidad = seccion === 'identidad';
         const verCiudadanos = verListado || verIdentidad;
+        const verPolicias = seccion === 'policias';
+        const verGeneral = !verCiudadanos && !verPolicias;
 
-        document.getElementById('panelGeneralMonitoreo').hidden =
-            verCiudadanos;
+        document.getElementById('panelGeneralMonitoreo').hidden = !verGeneral;
 
         document.getElementById('panelCiudadanosMonitoreo').hidden = !verCiudadanos;
+
+        document.getElementById('panelPoliciasMonitoreo').hidden = !verPolicias;
 
         document.getElementById('vistaListadoCiudadanos').hidden = !verListado;
 
         document.getElementById('panelVerificacionIdentidad').hidden = !verIdentidad;
 
         document.getElementById('menuPanelGeneral')
-            .classList.toggle('activa', !verCiudadanos);
+            .classList.toggle('activa', verGeneral);
 
         document.getElementById('menuCiudadanos')
             .classList.toggle('activa', verCiudadanos);
+
+        document.getElementById('menuPolicias')
+            .classList.toggle('activa', verPolicias);
 
         const listado = document.getElementById('btnListadoCiudadanos');
         const identidad = document.getElementById('menuVerificacionIdentidad');
@@ -76,7 +82,13 @@
             cargarResumenCiudadanos();
         }
 
-        if (!verCiudadanos && mapaMonitoreo) {
+        if (verPolicias) {
+            cargarListadoPoliciasMonitoreo(paginaPoliciasMonitoreo);
+        } else {
+            detenerConsultasPoliciasMonitoreo();
+        }
+
+        if (verGeneral && mapaMonitoreo) {
             requestAnimationFrame(() => {
                 mapaMonitoreo.invalidateSize({
                     pan: false

@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\PoliciaController;
 use App\Http\Controllers\Api\SolicitudCancelacionController;
 use App\Http\Controllers\Api\VerificacionIdentidadController;
 use App\Http\Controllers\Api\CiudadanoController;
+use App\Http\Controllers\Api\PoliciaMonitoreoController;
 
 
 //Rutas públicas
@@ -78,6 +79,13 @@ Route::middleware('auth:sanctum')->group(function () {
         ->whereNumber('id')
         ->middleware('throttle:60,1,ciudadanos-detalle:');
 
+    Route::patch('/monitoreo/ciudadanos/{id}', [
+        CiudadanoController::class,
+        'actualizar',
+    ])
+        ->whereNumber('id')
+        ->middleware('throttle:20,1,ciudadanos-actualizar:');
+
     Route::get('/monitoreo/verificaciones-identidad', [
         VerificacionIdentidadController::class,
         'pendientes',
@@ -119,6 +127,39 @@ Route::middleware('auth:sanctum')->group(function () {
         '/monitoreo/policias',
         [MonitoreoController::class, 'policias']
     );
+
+    Route::get('/monitoreo/policias/registrados', [
+        PoliciaMonitoreoController::class,
+        'index',
+    ])->middleware('throttle:120,1,policias-listado:');
+
+    Route::get('/monitoreo/policias/registrados/{id}', [
+        PoliciaMonitoreoController::class,
+        'detalle',
+    ])
+        ->whereNumber('id')
+        ->middleware('throttle:60,1,policias-detalle:');
+
+    Route::get('/monitoreo/policias/registrados/{id}/servicios', [
+        PoliciaMonitoreoController::class,
+        'servicios',
+    ])
+        ->whereNumber('id')
+        ->middleware('throttle:60,1,policias-servicios:');
+
+    Route::patch('/monitoreo/policias/registrados/{id}', [
+        PoliciaMonitoreoController::class,
+        'actualizarDatosLaborales',
+    ])
+        ->whereNumber('id')
+        ->middleware('throttle:20,1,policias-actualizar:');
+
+    Route::patch('/monitoreo/policias/registrados/{id}/estado', [
+        PoliciaMonitoreoController::class,
+        'cambiarEstadoCuenta',
+    ])
+        ->whereNumber('id')
+        ->middleware('throttle:10,1,policias-estado:');
 
     Route::get('/monitoreo/alertas/{id}', [
         MonitoreoController::class,

@@ -1159,14 +1159,13 @@
             </div>
 
 
-            <div
-                class="
-                menu-opcion
-                menu-opcion-futura">
-
+            <button
+                type="button"
+                id="menuPolicias"
+                class="menu-opcion"
+                onclick="mostrarSeccionMonitoreo('policias')">
                 Policías
-
-            </div>
+            </button>
 
 
             <div class="menu-titulo">
@@ -1250,22 +1249,7 @@
         <!-- CONTENIDO -->
 
         <main class="contenido">
-            <div id="panelGeneralMonitoreo">
-
-
-                <div class="titulo-pagina">
-
-                    <h2>
-                        Panel general de operaciones
-                    </h2>
-
-                    <p>
-                        Supervisión y seguimiento de alertas ciudadanas en tiempo real.
-                    </p>
-
-                </div>
-
-
+            <div id="panelGeneralMonitoreo">                
 
                 <!-- INDICADORES -->
 
@@ -1583,6 +1567,7 @@
             </div>
 
             @include('monitoreo.ciudadanos')
+            @include('monitoreo.policias')
 
         </main>
 
@@ -2518,7 +2503,7 @@
             }
 
 
-            alertas.forEach(
+            alertas.slice(0,15).forEach(
                 function(alerta) {
 
                     const fila =

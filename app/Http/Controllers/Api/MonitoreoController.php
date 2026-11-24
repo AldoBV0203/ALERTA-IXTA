@@ -1079,6 +1079,12 @@ class MonitoreoController extends Controller
             'operador:id_operador,nombre'
         ])
             ->where('id_alerta', $id)
+            ->whereNotIn('accion', [
+                'OFERTA_ALERTA',
+                'OFERTA_VENCIDA',
+                'OFERTA_RECHAZADA',
+                'REINICIO_RONDA',
+            ])
             ->orderBy('id')
             ->get()
             ->map(function ($seguimiento) {
@@ -1796,24 +1802,6 @@ class MonitoreoController extends Controller
                     }
 
 
-                    // Esperar 20 segundos antes de iniciar nuevamente una ronda completa.
-                    $momentoReinicio =
-                        \Carbon\Carbon::parse(
-                            $ultimaFinalizacion->fecha_hora
-                        )
-                        ->addSeconds(20);
-
-
-                    if (
-                        now()->lt(
-                            $momentoReinicio
-                        )
-                    ) {
-
-                        return null;
-                    }
-
-
                     /* Registrar el inicio de una nueva ronda.
                     Usamos el último policía de la oferta anterior para conservar la relación existente en seguimiento_alerta. */
                     SeguimientoAlerta::create([
@@ -1847,7 +1835,7 @@ class MonitoreoController extends Controller
                         );
 
 
-                    // Puede ocurrir que después de los 20 segundos ningún policía siga conectado o disponible.
+                    // Puede ocurrir que ningún policía siga conectado o disponible.
                     if (!$siguientePolicia) {
 
                         return null;

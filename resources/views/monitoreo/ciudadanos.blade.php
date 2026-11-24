@@ -242,7 +242,7 @@
 </style>
 
 <section id="panelCiudadanosMonitoreo" hidden>
-    
+
 
     <nav class="ciudadanos-pestanas" aria-label="Apartados de ciudadanos">
         <button
@@ -327,27 +327,14 @@
         <div class="ciudadanos-paginacion">
             <span id="totalListadoCiudadanos"></span>
 
-            <div class="ciudadanos-paginacion-acciones">
-                <button
-                    id="btnCiudadanosAnterior"
-                    type="button"
-                    class="ciudadanos-boton ciudadanos-boton-secundario"
-                    onclick="cambiarPaginaCiudadanos(-1)"
-                    disabled>
-                    Anterior
-                </button>
-
-                <span id="paginaListadoCiudadanos">Página 1</span>
-
-                <button
-                    id="btnCiudadanosSiguiente"
-                    type="button"
-                    class="ciudadanos-boton ciudadanos-boton-secundario"
-                    onclick="cambiarPaginaCiudadanos(1)"
-                    disabled>
-                    Siguiente
-                </button>
-            </div>
+            <button
+                id="btnVerMasCiudadanos"
+                type="button"
+                class="ciudadanos-boton"
+                onclick="verMasCiudadanos()"
+                hidden>
+                Ver más
+            </button>
         </div>
     </div>
 
@@ -412,6 +399,55 @@
             </div>
         </dl>
 
+        <button
+            id="btnEditarCiudadano"
+            type="button"
+            class="ciudadanos-boton ciudadanos-boton-secundario"
+            onclick="mostrarEdicionCiudadano()"
+            hidden>
+            Editar datos
+        </button>
+
+        <form
+            id="formEditarCiudadano"
+            onsubmit="guardarEdicionCiudadano(event)"
+            hidden>
+            <div class="ciudadanos-campo">
+                <label for="editarNombreCiudadano">Nombre completo</label>
+                <input
+                    id="editarNombreCiudadano"
+                    type="text"
+                    maxlength="100"
+                    required>
+            </div>
+
+            <div class="ciudadanos-campo">
+                <label for="editarTelefonoCiudadano">Teléfono</label>
+                <input
+                    id="editarTelefonoCiudadano"
+                    type="tel"
+                    inputmode="numeric"
+                    minlength="10"
+                    maxlength="10"
+                    pattern="[0-9]{10}"
+                    required>
+            </div>
+
+            <button
+                id="btnGuardarCiudadano"
+                type="submit"
+                class="ciudadanos-boton">
+                Guardar cambios
+            </button>
+
+            <button
+                type="button"
+                class="ciudadanos-boton ciudadanos-boton-secundario"
+                onclick="cancelarEdicionCiudadano()">
+                Cancelar
+            </button>
+        </form>
+
         <p
             id="motivoRechazoFichaCiudadano"
             class="ciudadanos-mensaje"
@@ -460,67 +496,114 @@
         const tabla = document.getElementById('tablaCiudadanosMonitoreo');
         const mensaje = document.getElementById('mensajeListadoCiudadanos');
         const buscar = document.getElementById('btnBuscarCiudadanos');
-        const anterior = document.getElementById('btnCiudadanosAnterior');
-        const siguiente = document.getElementById('btnCiudadanosSiguiente');
+        const verMas = document.getElementById('btnVerMasCiudadanos');
+
+        const cantidadSolicitada = pagina * 20;
+        const porPagina = Math.min(cantidadSolicitada, 100);
+        const filtros = {
+            ...filtrosCiudadanos
+        };
+
+        buscar.disabled = true;
+        verMas.disabled = true;
+        tabla.setAttribute('aria-busy', 'true');
 
         if (!silenciosa) {
-            buscar.disabled = true;
-            anterior.disabled = true;
-            siguiente.disabled = true;
-
             mensaje.style.color = '#62676C';
             mensaje.textContent = 'Consultando ciudadanos…';
         }
 
-        tabla.setAttribute('aria-busy', 'true');
-
-        const parametros = new URLSearchParams({
-            page: String(pagina)
-        });
-
-        if (filtrosCiudadanos.curp) {
-            parametros.set('curp', filtrosCiudadanos.curp);
-        }
-
-        if (filtrosCiudadanos.verificacion) {
-            parametros.set('verificacion', filtrosCiudadanos.verificacion);
-        }
-
         try {
-            const respuesta = await fetch(
-                API + '/monitoreo/ciudadanos?' + parametros, {
-                    signal: consulta.signal,
-                    headers: {
-                        'Authorization': 'Bearer ' + tokenMonitoreo,
-                        'Accept': 'application/json'
-                    },
-                    cache: 'no-store'
+            const ciudadanos = new Map();
+            let paginaConsulta = 1;
+            let ultimaPaginaConsulta = 1;
+            let total = 0;
+
+            do {
+                const parametros = new URLSearchParams({
+                    page: String(paginaConsulta),
+                    por_pagina: String(porPagina)
+                });
+
+                if (filtros.curp) {
+                    parametros.set('curp', filtros.curp);
                 }
+
+                if (filtros.verificacion) {
+                    parametros.set('verificacion', filtros.verificacion);
+                }
+
+                const respuesta = await fetch(
+                    API + '/monitoreo/ciudadanos?' + parametros, {
+                        signal: consulta.signal,
+                        headers: {
+                            'Authorization': 'Bearer ' + tokenMonitoreo,
+                            'Accept': 'application/json'
+                        },
+                        cache: 'no-store'
+                    }
+                );
+
+                if (consulta.signal.aborted) return;
+
+                if (respuesta.status === 401) {
+                    cerrarSesionMonitoreo();
+                    return;
+                }
+
+                if (respuesta.status === 429) {
+                    throw new Error(
+                        'Hay demasiadas consultas. Espera un momento e intenta otra vez.'
+                    );
+                }
+
+                const datos = await respuesta.json();
+
+                if (consulta.signal.aborted) return;
+
+                if (!respuesta.ok) {
+                    throw new Error(
+                        datos.errors?.curp?.[0] ??
+                        datos.message ??
+                        'No se pudo consultar el listado.'
+                    );
+                }
+
+                if (
+                    !Array.isArray(datos.ciudadanos) ||
+                    !Number.isInteger(datos.paginacion?.total) ||
+                    !Number.isInteger(datos.paginacion?.ultima)
+                ) {
+                    throw new Error('La respuesta del listado no es válida.');
+                }
+
+                total = datos.paginacion.total;
+                ultimaPaginaConsulta = datos.paginacion.ultima;
+
+                for (const ciudadano of datos.ciudadanos) {
+                    ciudadanos.set(ciudadano.id, ciudadano);
+                }
+
+                paginaConsulta++;
+            } while (
+                ciudadanos.size < cantidadSolicitada &&
+                paginaConsulta <= ultimaPaginaConsulta
             );
 
-            if (consulta.signal.aborted) return;
-
-            if (respuesta.status === 401) {
-                cerrarSesionMonitoreo();
+            if (
+                consulta.signal.aborted ||
+                consultaListadoCiudadanos !== consulta
+            ) {
                 return;
             }
 
-            const datos = await respuesta.json();
-
-            if (consulta.signal.aborted) return;
-
-            if (!respuesta.ok) {
-                mensaje.style.color = '#9F2241';
-                mensaje.textContent =
-                    datos.errors?.curp?.[0] ??
-                    datos.message ??
-                    'No se pudo consultar el listado.';
-                return;
-            }
+            const visibles = Array.from(ciudadanos.values())
+                .sort((a, b) => b.id - a.id)
+                .slice(0, cantidadSolicitada);
 
             const contenido = document.createDocumentFragment();
 
-            for (const ciudadano of datos.ciudadanos) {
+            for (const ciudadano of visibles) {
                 const fila = document.createElement('tr');
 
                 const cuenta = ciudadano.estatus === 'ACTIVO' ?
@@ -562,7 +645,7 @@
                 contenido.appendChild(fila);
             }
 
-            if (datos.ciudadanos.length === 0) {
+            if (visibles.length === 0) {
                 const fila = document.createElement('tr');
                 const celda = document.createElement('td');
 
@@ -576,31 +659,28 @@
 
             tabla.replaceChildren(contenido);
 
-            paginaCiudadanos = datos.paginacion.actual;
-            ultimaPaginaCiudadanos = datos.paginacion.ultima;
-
-            const total = datos.paginacion.total;
+            ultimaPaginaCiudadanos = Math.max(1, Math.ceil(total / 20));
+            paginaCiudadanos = Math.min(pagina, ultimaPaginaCiudadanos);
 
             document.getElementById('totalListadoCiudadanos').textContent =
-                `${total} ${total === 1 ? 'resultado' : 'resultados'}`;
+                `Mostrando ${visibles.length} de ${total}`;
 
-            document.getElementById('paginaListadoCiudadanos').textContent =
-                `Página ${paginaCiudadanos} de ${ultimaPaginaCiudadanos}`;
-
+            verMas.hidden = visibles.length >= total;
             mensaje.textContent = '';
         } catch (error) {
-            if (!consulta.signal.aborted) {
+            if (
+                !consulta.signal.aborted &&
+                consultaListadoCiudadanos === consulta
+            ) {
                 mensaje.style.color = '#9F2241';
                 mensaje.textContent =
-                    'No fue posible consultar los ciudadanos. Intenta nuevamente.';
+                    error.message || 'No fue posible consultar los ciudadanos.';
             }
         } finally {
             if (consultaListadoCiudadanos === consulta) {
                 consultaListadoCiudadanos = null;
                 buscar.disabled = false;
-                anterior.disabled = paginaCiudadanos <= 1;
-                siguiente.disabled =
-                    paginaCiudadanos >= ultimaPaginaCiudadanos;
+                verMas.disabled = false;
                 tabla.removeAttribute('aria-busy');
             }
         }
@@ -644,22 +724,166 @@
         cargarCiudadanos(1);
     }
 
-    function cambiarPaginaCiudadanos(direccion) {
-        const siguiente = paginaCiudadanos + direccion;
-
+    function verMasCiudadanos() {
         if (
             temporizadorCurpCiudadanos ||
             consultaListadoCiudadanos ||
-            siguiente < 1 ||
-            siguiente > ultimaPaginaCiudadanos
+            paginaCiudadanos >= ultimaPaginaCiudadanos
         ) {
             return;
         }
 
-        cargarCiudadanos(siguiente);
+        const curp = document.getElementById('buscarCurpCiudadano')
+            .value.trim().toUpperCase();
+
+        const verificacion = document.getElementById(
+            'filtroIdentidadCiudadano'
+        ).value;
+
+        if (
+            curp !== filtrosCiudadanos.curp ||
+            verificacion !== filtrosCiudadanos.verificacion
+        ) {
+            document.getElementById('formBuscarCiudadanos').requestSubmit();
+            return;
+        }
+
+        cargarCiudadanos(paginaCiudadanos + 1);
     }
 
     let consultaFichaCiudadano = null;
+    let ciudadanoEnFicha = null;
+    let consultaEdicionCiudadano = null;
+
+    function mostrarEdicionCiudadano() {
+        if (!ciudadanoEnFicha) return;
+
+        document.getElementById('editarNombreCiudadano').value =
+            ciudadanoEnFicha.nombre ?? '';
+
+        document.getElementById('editarTelefonoCiudadano').value =
+            ciudadanoEnFicha.telefono ?? '';
+
+        document.getElementById('formEditarCiudadano').hidden = false;
+        document.getElementById('btnEditarCiudadano').hidden = true;
+    }
+
+    function cancelarEdicionCiudadano() {
+        document.getElementById('formEditarCiudadano').hidden = true;
+        document.getElementById('btnEditarCiudadano').hidden = !ciudadanoEnFicha;
+    }
+
+    async function guardarEdicionCiudadano(evento) {
+        evento.preventDefault();
+
+        if (!ciudadanoEnFicha || consultaEdicionCiudadano) return;
+
+        const nombre = document.getElementById('editarNombreCiudadano')
+            .value.trim();
+
+        const telefono = document.getElementById('editarTelefonoCiudadano')
+            .value.trim();
+
+        const mensaje = document.getElementById('mensajeFichaCiudadano');
+        const guardar = document.getElementById('btnGuardarCiudadano');
+        const id = ciudadanoEnFicha.id;
+
+        if (!nombre || !/^[0-9]{10}$/.test(telefono)) {
+            mensaje.style.color = '#9F2241';
+            mensaje.textContent =
+                'Escribe un nombre y un teléfono de 10 dígitos.';
+            return;
+        }
+
+        const consulta = new AbortController();
+        consultaEdicionCiudadano = consulta;
+        guardar.disabled = true;
+        mensaje.style.color = '#62676C';
+        mensaje.textContent = 'Guardando cambios…';
+
+        try {
+            const respuesta = await fetch(
+                API + '/monitoreo/ciudadanos/' +
+                encodeURIComponent(id), {
+                    method: 'PATCH',
+                    signal: consulta.signal,
+                    headers: {
+                        'Authorization': 'Bearer ' + tokenMonitoreo,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        nombre,
+                        telefono
+                    }),
+                    cache: 'no-store'
+                }
+            );
+
+            if (respuesta.status === 401) {
+                cerrarSesionMonitoreo();
+                return;
+            }
+
+            const datos = await respuesta.json();
+
+            if (!respuesta.ok) {
+                mensaje.style.color = '#9F2241';
+                mensaje.textContent =
+                    datos.errors?.nombre?.[0] ??
+                    datos.errors?.telefono?.[0] ??
+                    datos.message ??
+                    'No se pudieron guardar los cambios.';
+                return;
+            }
+
+            if (
+                consulta.signal.aborted ||
+                !document.getElementById('fichaCiudadanoMonitoreo').open ||
+                ciudadanoEnFicha?.id !== id
+            ) return;
+
+            ciudadanoEnFicha.nombre = datos.ciudadano.nombre;
+            ciudadanoEnFicha.telefono = datos.ciudadano.telefono;
+            ciudadanoEnFicha.estatus_verificacion =
+                datos.ciudadano.estatus_verificacion;
+
+            document.getElementById('fichaCiudadanoNombre').textContent =
+                ciudadanoEnFicha.nombre;
+
+            document.getElementById('fichaCiudadanoTelefono').textContent =
+                ciudadanoEnFicha.telefono;
+
+            document.getElementById('fichaCiudadanoIdentidad').textContent =
+                textoIdentidadCiudadano(ciudadanoEnFicha);
+
+            document.getElementById('fichaCiudadanoVerificada').textContent =
+                datos.ciudadano.estatus_verificacion === 'VERIFICADA' ?
+                document.getElementById(
+                    'fichaCiudadanoVerificada'
+                ).textContent :
+                'No registrada';
+
+            cancelarEdicionCiudadano();
+
+            mensaje.style.color = '#235B4E';
+            mensaje.textContent = datos.message;
+
+            cargarCiudadanos(paginaCiudadanos, true);
+            cargarResumenCiudadanos();
+        } catch (error) {
+            if (!consulta.signal.aborted) {
+                mensaje.style.color = '#9F2241';
+                mensaje.textContent =
+                    'No fue posible guardar los cambios. Intenta nuevamente.';
+            }
+        } finally {
+            if (consultaEdicionCiudadano === consulta) {
+                consultaEdicionCiudadano = null;
+                guardar.disabled = false;
+            }
+        }
+    }
 
     function fechaCiudadano(valor) {
         if (!valor) return 'No registrada';
@@ -675,6 +899,9 @@
         consultaFichaCiudadano?.abort();
         consultaFichaCiudadano = null;
 
+        ciudadanoEnFicha = null;
+        document.getElementById('formEditarCiudadano').hidden = true;
+        document.getElementById('btnEditarCiudadano').hidden = true;
         document.getElementById('fichaCiudadanoMonitoreo').close();
     }
 
@@ -691,6 +918,9 @@
         const datosFicha = document.getElementById('datosFichaCiudadano');
         const motivo = document.getElementById('motivoRechazoFichaCiudadano');
         const revisar = document.getElementById('btnRevisarIdentidadCiudadano');
+        ciudadanoEnFicha = null;
+        document.getElementById('formEditarCiudadano').hidden = true;
+        document.getElementById('btnEditarCiudadano').hidden = true;
 
         datosFicha.hidden = true;
         motivo.hidden = true;
@@ -746,6 +976,8 @@
             }
 
             const ciudadano = datos.ciudadano;
+            ciudadanoEnFicha = ciudadano;
+            document.getElementById('btnEditarCiudadano').hidden = false;
 
             const campos = {
                 fichaCiudadanoNombre: ciudadano.nombre,
