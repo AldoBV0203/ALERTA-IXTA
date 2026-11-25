@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\RateLimiter;
 
 class PersonalAuthController extends Controller
 {
@@ -209,9 +210,19 @@ class PersonalAuthController extends Controller
             ], 422);
         }
 
+        try {
+            $operador->sendEmailVerificationNotification();
+            $correoEnviado = true;
+        } catch (\Throwable $error) {
+            report($error);
+            $correoEnviado = false;
+        }
+
         return response()->json([
-            'message' =>
-            'Cuenta registrada. Ya puedes iniciar sesión con tu CUIP y contraseña.',
+            'message' => $correoEnviado
+                ? 'Cuenta registrada. Revisa tu correo para verificarla.'
+                : 'Cuenta registrada, pero no pudimos enviar el correo. Solicita otro enlace desde el acceso policial.',
+            'correo_enviado' => $correoEnviado,
             'personal' => [
                 'id_operador' => $operador->id_operador,
                 'nombre' => $operador->nombre,
@@ -274,6 +285,17 @@ class PersonalAuthController extends Controller
             ], 403);
         }
 
+        if (
+            $operador->rol === 'POLICIA' &&
+            $operador->email !== null &&
+            !$operador->hasVerifiedEmail()
+        ) {
+            return response()->json([
+                'message' => 'Confirma tu correo electrónico antes de iniciar sesión.',
+                'codigo' => 'CORREO_SIN_VERIFICAR',
+            ], 403);
+        }
+
         // Al iniciar sesión, se revocan los tokens policiales anteriores.
         if ($operador->rol === 'POLICIA') {
             $operador->tokens()->delete();
@@ -296,6 +318,71 @@ class PersonalAuthController extends Controller
                 'usuario' => $operador->usuario,
                 'rol' => $operador->rol,
             ],
+        ]);
+    }
+
+    public function reenviarVerificacionCorreoPolicia(
+        Request $request,
+        CuipService $cuipService
+    ) {
+        $datos = $request->validate([
+            'cuip' => ['required', 'string', 'max:50'],
+            'password' => ['required', 'string'],
+        ]);
+
+        $operador = Operador::where(
+            'cuip_lookup',
+            $cuipService->generarLookup($datos['cuip'])
+        )->where('rol', 'POLICIA')->first();
+
+        if (
+            !$operador ||
+            !Hash::check($datos['password'], $operador->password_hash)
+        ) {
+            return response()->json([
+                'message' => 'Credenciales incorrectas.',
+            ], 401);
+        }
+
+        if (!$operador->activo) {
+            return response()->json([
+                'message' => 'La cuenta no se encuentra activa.',
+            ], 403);
+        }
+
+        if (!$operador->email) {
+            return response()->json([
+                'message' => 'Esta cuenta policial no tiene un correo registrado.',
+            ], 409);
+        }
+
+        if ($operador->hasVerifiedEmail()) {
+            return response()->json([
+                'message' => 'Tu correo ya está verificado. Puedes iniciar sesión.',
+            ]);
+        }
+
+        $limite = 'reenviar-correo-policia:' . $operador->id_operador;
+
+        if (RateLimiter::tooManyAttempts($limite, 1)) {
+            return response()->json([
+                'message' => 'Espera un minuto antes de solicitar otro correo.',
+            ], 429);
+        }
+
+        try {
+            $operador->sendEmailVerificationNotification();
+            RateLimiter::hit($limite, 60);
+        } catch (\Throwable $error) {
+            report($error);
+
+            return response()->json([
+                'message' => 'No pudimos enviar el correo. Intenta más tarde.',
+            ], 503);
+        }
+
+        return response()->json([
+            'message' => 'Te enviamos un nuevo enlace. Revisa tu correo y la carpeta de no deseados.',
         ]);
     }
 }

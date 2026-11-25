@@ -364,6 +364,16 @@
                     </p>
                 </form>
 
+                <div id="registroPoliciaExitoso" hidden role="status">
+                    <h3 id="tituloResultadoRegistroPolicia">Revisa tu correo</h3>
+
+                    <p id="textoResultadoRegistroPolicia"></p>
+
+                    <a href="{{ route('policia') }}" class="boton">
+                        Ir al acceso policial
+                    </a>
+                </div>
+
             </main>
         </div>
     </div>
@@ -460,7 +470,21 @@
                     return;
                 }
 
-                window.location.replace("{{ route('policia') }}");
+                formulario.hidden = true;
+                document.getElementById('introduccionRegistroPolicia').hidden = true;
+                mensaje.textContent = '';
+
+                document.getElementById('tituloResultadoRegistroPolicia').textContent =
+                    resultado.correo_enviado ?
+                    'Revisa tu correo' :
+                    'Tu cuenta fue registrada';
+
+                document.getElementById('textoResultadoRegistroPolicia').textContent =
+                    resultado.correo_enviado ?
+                    'Enviamos un enlace a tu correo. Presiona "Verificar mi correo" y después inicia sesión con tu CUIP y contraseña.' :
+                    'No pudimos enviar el correo de verificación. No repitas el registro; podrás solicitar otro enlace desde el acceso policial.';
+
+                document.getElementById('registroPoliciaExitoso').hidden = false;
             } catch (error) {
                 mensaje.style.color = '#9F2241';
                 mensaje.textContent =

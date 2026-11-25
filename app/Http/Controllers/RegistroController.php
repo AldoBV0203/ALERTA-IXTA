@@ -198,22 +198,14 @@ class RegistroController extends Controller
 
         try {
             $ciudadano->sendEmailVerificationNotification();
+            $resultadoCorreo = 'enviado';
         } catch (\Throwable $error) {
             report($error);
-
-            return redirect()
-                ->route('login')
-                ->with(
-                    'success',
-                    'Tu cuenta fue registrada, pero no pudimos enviar el correo de verificación. Podrás solicitar otro enlace.'
-                );
+            $resultadoCorreo = 'fallo';
         }
 
         return redirect()
-            ->route('login')
-            ->with(
-                'success',
-                'Tu cuenta fue registrada correctamente. La verificación de identidad está pendiente.'
-            );
+            ->route('registro.correo')
+            ->with('resultado_correo', $resultadoCorreo);
     }
 }

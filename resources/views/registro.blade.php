@@ -238,7 +238,6 @@
 
                 </form>
 
-
                 <div class="aviso">
 
                     ¿Ya tienes una cuenta?
@@ -248,6 +247,7 @@
                     </a>
 
                 </div>
+
 
             </main>
 

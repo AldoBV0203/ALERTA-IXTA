@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\RateLimiter;
 
 class AuthController extends Controller
 {
@@ -116,9 +117,19 @@ class AuthController extends Controller
 
             return $ciudadano;
         });
+        try {
+            $usuario->sendEmailVerificationNotification();
+            $correoEnviado = true;
+        } catch (\Throwable $error) {
+            report($error);
+            $correoEnviado = false;
+        }
 
         return response()->json([
-            'message' => 'Usuario registrado correctamente.',
+            'message' => $correoEnviado
+                ? 'Cuenta registrada. Revisa tu correo para verificarla.'
+                : 'Cuenta registrada, pero no pudimos enviar el correo. Solicita otro enlace desde el inicio de sesión.',
+            'correo_enviado' => $correoEnviado,
             'usuario' => [
                 'id' => $usuario->id,
                 'name' => $usuario->name,
@@ -187,6 +198,13 @@ class AuthController extends Controller
             ], 403);
         }
 
+        if (!$usuario->hasVerifiedEmail()) {
+            return response()->json([
+                'message' => 'Confirma tu correo electrónico antes de iniciar sesión.',
+                'codigo' => 'CORREO_SIN_VERIFICAR',
+            ], 403);
+        }
+
         //se crea token para la aplicación           
 
         $token = $usuario
@@ -204,6 +222,79 @@ class AuthController extends Controller
                 'estatus_verificacion' =>
                 $usuario->estatus_verificacion,
             ],
+        ]);
+    }
+
+    public function reenviarVerificacionCorreo(
+        Request $request,
+        CurpService $curpService
+    ) {
+        $datos = $request->validate([
+            'curp' => ['required', 'string', 'size:18'],
+            'password' => ['required', 'string'],
+        ]);
+
+        $curp = $curpService->normalizar($datos['curp']);
+
+        if (!$curpService->esValida($curp)) {
+            return response()->json([
+                'message' => 'Credenciales incorrectas.',
+            ], 401);
+        }
+
+        $usuario = User::where(
+            'curp_lookup',
+            $curpService->generarLookup($curp)
+        )->first();
+
+        if (
+            !$usuario ||
+            !Hash::check($datos['password'], $usuario->password)
+        ) {
+            return response()->json([
+                'message' => 'Credenciales incorrectas.',
+            ], 401);
+        }
+
+        if ($usuario->estatus !== 'ACTIVO') {
+            return response()->json([
+                'message' => 'La cuenta no se encuentra activa.',
+            ], 403);
+        }
+
+        if ($usuario->hasVerifiedEmail()) {
+            return response()->json([
+                'message' => 'Tu correo ya está verificado. Puedes iniciar sesión.',
+            ], 200);
+        }
+
+        if (!$usuario->email) {
+            return response()->json([
+                'message' => 'Esta cuenta no tiene un correo registrado.',
+            ], 409);
+        }
+
+        $limite = 'reenviar-correo-ciudadano:' . $usuario->id;
+
+        if (RateLimiter::tooManyAttempts($limite, 1)) {
+            return response()->json([
+                'message' => 'Espera un minuto antes de solicitar otro correo.',
+            ], 429);
+        }
+
+        try {
+            $usuario->sendEmailVerificationNotification();
+            RateLimiter::hit($limite, 60);
+        } catch (\Throwable $error) {
+            report($error);
+
+            return response()->json([
+                'message' => 'No pudimos enviar el correo. Intenta más tarde.',
+            ], 503);
+        }
+
+        return response()->json([
+            'message' => 'Te enviamos un nuevo enlace. Revisa tu correo y la carpeta de no deseados.',
         ]);
     }
 

@@ -198,7 +198,21 @@
         }
 
         #loginPolicia .boton {
+            display: block;
+            width: 270px;
+            max-width: 100%;
+            margin-left: auto;
+            margin-right: auto;
             background: var(--vino-oscuro);
+        }
+
+        #loginPolicia #btnReenviarCorreoPolicia {
+            margin-top: 14px;
+            font-size: 14px;
+        }
+
+        #loginPolicia #btnReenviarCorreoPolicia[hidden] {
+            display: none !important;
         }
 
         #loginPolicia .boton:hover {
@@ -273,6 +287,12 @@
                         Acceso policial
                     </h2>
 
+                    @if (session('success'))
+                    <p role="status" style="color: #235B4E;">
+                        {{ session('success') }}
+                    </p>
+                    @endif
+
                     <div class="campo">
                         <label for="cuipPolicia">
                             CUIP
@@ -315,6 +335,15 @@
                         id="mensajeLoginPolicia"
                         class="mensaje">
                     </div>
+
+                    <button
+                        id="btnReenviarCorreoPolicia"
+                        type="button"
+                        class="boton"
+                        onclick="reenviarCorreoPolicia()"
+                        hidden>
+                        Reenviar correo de verificación
+                    </button>
 
                     <p class="registro-pie-policia">
                         ¿No tienes cuenta?
@@ -845,10 +874,8 @@
                 )
                 .value;
 
-            const mensaje =
-                document.getElementById(
-                    'mensajeLoginPolicia'
-                );
+            const mensaje = document.getElementById('mensajeLoginPolicia');
+            document.getElementById('btnReenviarCorreoPolicia').hidden = true;
 
             if (identificador === '' || password === '') {
                 mensaje.textContent = 'Ingresa tu CUIP y contraseña.';
@@ -869,12 +896,10 @@
                         },
 
                         body: JSON.stringify(
-                            identificador.toLowerCase().startsWith('policia.') ?
-                            {
+                            identificador.toLowerCase().startsWith('policia.') ? {
                                 usuario: identificador.toLowerCase(),
                                 password: password
-                            } :
-                            {
+                            } : {
                                 cuip: identificador.toUpperCase(),
                                 password: password
                             }
@@ -893,6 +918,8 @@
                         datos.message ??
                         'No fue posible iniciar sesión.';
 
+                    document.getElementById('btnReenviarCorreoPolicia').hidden =
+                        datos.codigo !== 'CORREO_SIN_VERIFICAR';
                     return;
                 }
 
@@ -976,6 +1003,41 @@
 
             }
 
+        }
+
+        async function reenviarCorreoPolicia() {
+            const boton = document.getElementById('btnReenviarCorreoPolicia');
+            const mensaje = document.getElementById('mensajeLoginPolicia');
+
+            boton.disabled = true;
+            mensaje.textContent = 'Enviando correo...';
+
+            try {
+                const respuesta = await fetch(
+                    API + '/personal/correo-verificacion/reenviar', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            cuip: document.getElementById('cuipPolicia')
+                                .value.trim().toUpperCase(),
+                            password: document.getElementById('passwordPolicia').value
+                        })
+                    }
+                );
+
+                const datos = await respuesta.json();
+
+                mensaje.textContent = datos.message ??
+                    'No se pudo solicitar otro correo. Intenta nuevamente.';
+            } catch (error) {
+                mensaje.textContent =
+                    'No fue posible conectar con el servidor.';
+            } finally {
+                boton.disabled = false;
+            }
         }
 
 

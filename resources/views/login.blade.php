@@ -2,14 +2,27 @@
 <html lang="es">
 
 <style>
-    /* Botón institucional de inicio de sesión */
     .app .boton.boton-login {
+        display: block;
+        width: 270px;
+        max-width: 100%;
+        margin-left: auto;
+        margin-right: auto;
         background-color: #691C32 !important;
         color: white;
     }
 
     .app .boton.boton-login:hover {
         background-color: #9F2241 !important;
+    }
+
+    .app #btnReenviarCorreo {
+        margin-top: 14px;
+        font-size: 14px;
+    }
+
+    .app #btnReenviarCorreo[hidden] {
+        display: none !important;
     }
 </style>
 
@@ -100,6 +113,15 @@
                 ">
                 </div>
 
+                <button
+                    type="button"
+                    class="boton boton-login"
+                    id="btnReenviarCorreo"
+                    onclick="reenviarCorreoVerificacion()"
+                    hidden>
+                    Reenviar correo de verificación
+                </button>
+
                 <div class="aviso">
 
                     ¿No tienes una cuenta?
@@ -146,6 +168,7 @@
 
 
             mensaje.textContent = '';
+            document.getElementById('btnReenviarCorreo').hidden = true;
 
 
             if (curp === '' || password === '') {
@@ -195,6 +218,8 @@
                     mensaje.textContent =
                         datos.message ??
                         'CURP o contraseña incorrectos.';
+                    document.getElementById('btnReenviarCorreo').hidden =
+                        datos.codigo !== 'CORREO_SIN_VERIFICAR';
 
                     return;
                 }
@@ -235,6 +260,41 @@
 
             }
 
+        }
+
+        async function reenviarCorreoVerificacion() {
+            const boton = document.getElementById('btnReenviarCorreo');
+            const mensaje = document.getElementById('mensajeLogin');
+
+            boton.disabled = true;
+            mensaje.style.color = '#235B4E';
+            mensaje.textContent = 'Enviando correo...';
+
+            try {
+                const respuesta = await fetch('/api/correo-verificacion/reenviar', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        curp: document.getElementById('curp').value.trim().toUpperCase(),
+                        password: document.getElementById('password').value
+                    })
+                });
+
+                const datos = await respuesta.json();
+
+                mensaje.style.color = respuesta.ok ? '#235B4E' : '#9F2241';
+                mensaje.textContent = datos.message ??
+                    'No se pudo solicitar otro correo. Intenta nuevamente.';
+            } catch (error) {
+                mensaje.style.color = '#9F2241';
+                mensaje.textContent =
+                    'No fue posible conectar con el servidor.';
+            } finally {
+                boton.disabled = false;
+            }
         }
 
 

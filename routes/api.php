@@ -19,6 +19,11 @@ Route::post('/registro', [AuthController::class, 'registro']);
 
 Route::post('/login', [AuthController::class, 'login']);
 
+Route::post('/correo-verificacion/reenviar', [
+    AuthController::class,
+    'reenviarVerificacionCorreo',
+])->middleware('throttle:3,1');
+
 Route::post('/personal/registro', [PersonalAuthController::class, 'registro']);
 Route::post('/personal/registro-policia', [
     PersonalAuthController::class,
@@ -26,6 +31,11 @@ Route::post('/personal/registro-policia', [
 ])->middleware('throttle:5,1,registro-policia:');
 
 Route::post('/personal/login', [PersonalAuthController::class, 'login']);
+
+Route::post('/personal/correo-verificacion/reenviar', [
+    PersonalAuthController::class,
+    'reenviarVerificacionCorreoPolicia',
+])->middleware('throttle:3,1');
 
 //Rutas protegidas
 

@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Notifications\Notifiable;
 
-class Operador extends Authenticatable
+class Operador extends Authenticatable implements MustVerifyEmail
 {
-    use HasApiTokens;
+    use HasApiTokens, Notifiable;
 
     protected $table = 'operadores';
 
@@ -76,5 +78,10 @@ class Operador extends Authenticatable
             'precision_m' => 'decimal:2',
             'ubicacion_actualizada_at' => 'datetime',
         ];
+    }
+
+    public function sendEmailVerificationNotification()
+    {
+        $this->notify(new \App\Notifications\VerificarCorreoPolicia());
     }
 }
