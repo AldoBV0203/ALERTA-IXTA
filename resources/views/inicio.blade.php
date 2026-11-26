@@ -27,6 +27,107 @@
             margin-bottom: 15px;
         }
 
+        .tarjeta-notificacion-sos {
+            position: relative;
+            padding: 16px;
+            padding-right: 56px;
+            margin-top: 16px;
+            border: 1px solid #691C32;
+            border-radius: 12px;
+            background: #fff7f9;
+        }
+
+        .tarjeta-notificacion-sos[hidden],
+        .tarjeta-notificacion-sos p[hidden] {
+            display: none;
+        }
+
+        .tarjeta-notificacion-sos h3 {
+            margin: 0 0 8px;
+            color: #691C32;
+        }
+
+        .tarjeta-notificacion-sos p {
+            margin: 6px 0;
+        }
+
+        .invitacion-notificaciones-sos {
+            width: min(360px, calc(100% - 32px));
+            max-height: calc(100% - 32px);
+            padding: 20px;
+            border: 1px solid #691C32;
+            border-radius: 14px;
+            background: #fff7f9;
+            color: #171717;
+            box-sizing: border-box;
+        }
+
+        .invitacion-notificaciones-sos::backdrop {
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .invitacion-notificaciones-sos h3 {
+            margin: 0 0 10px;
+            color: #691C32;
+        }
+
+        .invitacion-notificaciones-sos p {
+            margin: 8px 0 12px;
+        }
+
+        .acciones-permiso-sos {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .acciones-permiso-sos button {
+            min-height: 44px;
+            padding: 10px 14px;
+            border: 0;
+            border-radius: 8px;
+            background: #691C32;
+            color: white;
+            cursor: pointer;
+        }
+
+        .acciones-permiso-sos button:last-child {
+            background: #eee7e9;
+            color: #691C32;
+        }
+
+        .acciones-notificacion-sos {
+            margin-top: 12px;
+        }
+
+        .acciones-notificacion-sos button {
+            min-height: 44px;
+            padding: 10px 16px;
+            border: 0;
+            border-radius: 8px;
+            background: #691C32;
+            color: white;
+            cursor: pointer;
+        }
+
+        .cerrar-notificacion-sos {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: grid;
+            place-items: center;
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border: 1px solid #691C32;
+            border-radius: 50%;
+            background: white;
+            color: #691C32;
+            font-size: 26px;
+            line-height: 1;
+            cursor: pointer;
+        }
+
         .estado-alerta {
             background: #f4f4f4;
             border-radius: 10px;
@@ -766,6 +867,55 @@
 
                 </div>
 
+                <dialog
+                    id="invitacionNotificacionesSos"
+                    class="invitacion-notificaciones-sos"
+                    aria-labelledby="tituloPermisoNotificacionesSos">
+                    <h3 id="tituloPermisoNotificacionesSos">
+                        Recibe notificaciones SOS
+                    </h3>
+                    <p>Entérate si un familiar o vecino de tus círculos crea una alerta.</p>
+                    <p id="estadoNotificacionesSos" role="status"></p>
+
+                    <div class="acciones-permiso-sos">
+                        <button type="button" onclick="activarNotificacionesSos()">
+                            Activar notificaciones
+                        </button>
+                        <button type="button" onclick="omitirNotificacionesSos()">
+                            Ahora no
+                        </button>
+                    </div>
+                </dialog>
+
+                <section
+                    id="tarjetaNotificacionSos"
+                    class="tarjeta-notificacion-sos"
+                    hidden>
+
+                    <button
+                        type="button"
+                        class="cerrar-notificacion-sos"
+                        aria-label="Cerrar vista de la alerta"
+                        title="Cerrar vista"
+                        onclick="cerrarVistaNotificacionSos()">
+                        ×
+                    </button>
+
+                    <h3 id="tituloNotificacionSos">Alerta SOS</h3>
+                    <p id="circuloNotificacionSos"></p>
+
+                    <!-- Se conservan estos identificadores porque el JavaScript aún los actualiza. -->
+                    <p id="datosNotificacionSos" hidden></p>
+                    <p id="ubicacionNotificacionSos" hidden></p>
+
+                    <div class="acciones-notificacion-sos">
+                        <button
+                            type="button"
+                            onclick="centrarNotificacionSos()">
+                            Seguir ubicación
+                        </button>
+                    </div>
+                </section>
 
                 <div id="mapa"></div>
 
@@ -1258,12 +1408,224 @@
                 'alerta_ixta_token'
             );
 
+        const CLAVE_OMITIR_NOTIFICACIONES_SOS =
+            'alerta_ixta_omitir_notificaciones_sos';
+
+        function estadoPermisoNotificacionesSos(mensaje) {
+            const estado = document.getElementById('estadoNotificacionesSos');
+
+            if (estado) estado.textContent = mensaje;
+        }
+
+        function ocultarInvitacionNotificacionesSos() {
+            const invitacion = document.getElementById('invitacionNotificacionesSos');
+
+            if (invitacion?.open) invitacion.close();
+        }
+
+        let idUsuarioNotificacionesSos = null;
+
+        function omitirNotificacionesSos() {
+            sessionStorage.setItem(
+                CLAVE_OMITIR_NOTIFICACIONES_SOS + '_' + idUsuarioNotificacionesSos,
+                '1'
+            );
+            ocultarInvitacionNotificacionesSos();
+        }
+
+        function convertirClavePublicaPush(clave) {
+            const base64 = clave.replace(/-/g, '+').replace(/_/g, '/');
+            const relleno = '='.repeat((4 - base64.length % 4) % 4);
+            const binario = atob(base64 + relleno);
+
+            return Uint8Array.from(binario, caracter => caracter.charCodeAt(0));
+        }
+
+        async function registrarSuscripcionNotificacionesSos() {
+            const respuestaClave = await fetch(
+                API + '/suscripciones-push/clave-publica', {
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Accept': 'application/json'
+                    }
+                }
+            );
+
+            if (!respuestaClave.ok) {
+                throw new Error('No se pudo obtener la clave pública.');
+            }
+
+            const {
+                publicKey
+            } = await respuestaClave.json();
+            await navigator.serviceWorker.register('/sw-sos.js');
+            const registro = await navigator.serviceWorker.ready;
+
+            let suscripcion = await registro.pushManager.getSubscription();
+
+            if (!suscripcion) {
+                suscripcion = await registro.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: convertirClavePublicaPush(publicKey)
+                });
+            }
+
+            const respuestaRegistro = await fetch(
+                API + '/suscripciones-push', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(suscripcion.toJSON())
+                }
+            );
+
+            if (!respuestaRegistro.ok) {
+                throw new Error('No se pudo registrar este navegador.');
+            }
+
+            localStorage.setItem(
+                'alerta_ixta_notificaciones_confirmadas_' + idUsuarioNotificacionesSos,
+                '1'
+            );
+
+            ocultarInvitacionNotificacionesSos();
+            estadoPermisoNotificacionesSos(
+                'Notificaciones activadas en este navegador.'
+            );
+        }
+
+        async function activarNotificacionesSos() {
+            if (!window.isSecureContext ||
+                !('serviceWorker' in navigator) ||
+                !('PushManager' in window) ||
+                !('Notification' in window)) {
+                estadoPermisoNotificacionesSos(
+                    'Este navegador o dirección no permite notificaciones.'
+                );
+                return;
+            }
+
+            try {
+                // Se solicita directamente desde el clic en «Activar».
+                const permiso = Notification.permission === 'granted' ?
+                    'granted' :
+                    await Notification.requestPermission();
+
+                if (permiso !== 'granted') {
+                    estadoPermisoNotificacionesSos(
+                        'Permiso no concedido. Puedes cambiarlo en el navegador.'
+                    );
+                    return;
+                }
+
+                estadoPermisoNotificacionesSos('Activando notificaciones...');
+                await registrarSuscripcionNotificacionesSos();
+            } catch (error) {
+                console.error(error);
+                estadoPermisoNotificacionesSos(
+                    'No se pudieron activar. Inténtalo de nuevo.'
+                );
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!token) return;
+
+            if (!window.isSecureContext ||
+                !('serviceWorker' in navigator) ||
+                !('PushManager' in window) ||
+                !('Notification' in window)) {
+                estadoPermisoNotificacionesSos(
+                    'Las notificaciones requieren un navegador compatible y una dirección segura.'
+                );
+                return;
+            }
+
+            try {
+                const registro = await navigator.serviceWorker.getRegistration('/');
+                const suscripcion = await registro?.pushManager.getSubscription();
+
+                const respuesta = await fetch(API + '/suscripciones-push/estado', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        endpoint: suscripcion?.endpoint ?? null
+                    })
+                });
+
+                if (!respuesta.ok) {
+                    throw new Error('No se pudo comprobar la suscripción.');
+                }
+
+                const estado = await respuesta.json();
+                idUsuarioNotificacionesSos = estado.id_usuario;
+
+                const confirmada = localStorage.getItem(
+                    'alerta_ixta_notificaciones_confirmadas_' +
+                    idUsuarioNotificacionesSos
+                ) === '1';
+
+                if (Notification.permission === 'granted' &&
+                    estado.registrada && confirmada) {
+                    estadoPermisoNotificacionesSos(
+                        'Notificaciones activadas en este navegador.'
+                    );
+                    return;
+                }
+
+                // Una suscripción antigua creada automáticamente espera la
+                // confirmación de esta cuenta antes de recibir más alertas.
+                if (estado.registrada && !confirmada && suscripcion) {
+                    await fetch(API + '/suscripciones-push', {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': 'Bearer ' + token,
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            endpoint: suscripcion.endpoint
+                        })
+                    });
+                }
+
+                estadoPermisoNotificacionesSos(
+                    Notification.permission === 'denied' ?
+                    'Permiso bloqueado. Actívalo en la configuración de Chrome.' :
+                    'Aún no están activadas para esta cuenta.'
+                );
+
+                if (sessionStorage.getItem(
+                        CLAVE_OMITIR_NOTIFICACIONES_SOS + '_' +
+                        idUsuarioNotificacionesSos
+                    ) !== '1') {
+                    document.getElementById('invitacionNotificacionesSos')
+                        .showModal();
+                }
+            } catch (error) {
+                console.error(error);
+                estadoPermisoNotificacionesSos(
+                    'No se pudo comprobar si las notificaciones están activadas.'
+                );
+            }
+        });
 
         let mapa = null;
 
         let marcadorCiudadano = null;
 
         let marcadorPolicia = null;
+        let marcadorContactoSos = null;
+        let idNotificacionSosActiva = null;
+        let intervaloNotificacionSos = null;
+        let seguirContactoSos = false;
 
         let latitudActual = null;
 
@@ -1306,9 +1668,19 @@
         });
 
 
+        // Conservar la alerta solicitada incluso si hay un token ya vencido.
+        const destinoSos = window.location.pathname + window.location.search;
+
+        if (/^\/inicio\?notificacion=[1-9]\d*$/.test(destinoSos)) {
+            sessionStorage.setItem(
+                'alerta_ixta_destino_sos',
+                destinoSos
+            );
+        }
+
         // Si no existe token, regresar al login.
         if (!token) {
-            window.location.href = '/';
+            window.location.replace('/');
         }
 
 
@@ -1324,6 +1696,14 @@
                 await cargarTiposAlerta();
 
                 await cargarMisAlertas();
+
+                const idNotificacion = new URLSearchParams(
+                    window.location.search
+                ).get('notificacion');
+
+                if (idNotificacion && /^\d+$/.test(idNotificacion)) {
+                    await mostrarNotificacionSos(idNotificacion);
+                }
 
             }
         );
@@ -2100,6 +2480,173 @@
                 }
             ).addTo(mapa);
 
+            mapa.on('dragstart', function() {
+                if (idNotificacionSosActiva !== null) {
+                    seguirContactoSos = false;
+                }
+            });
+
+        }
+
+        async function mostrarNotificacionSos(id) {
+            if (!/^\d+$/.test(String(id))) {
+                return;
+            }
+
+            if (intervaloNotificacionSos !== null) {
+                clearInterval(intervaloNotificacionSos);
+            }
+
+            idNotificacionSosActiva = Number(id);
+            seguirContactoSos = true;
+
+            navegarCiudadano('inicio');
+
+            await actualizarNotificacionSos();
+
+            if (idNotificacionSosActiva === Number(id)) {
+                intervaloNotificacionSos = setInterval(
+                    actualizarNotificacionSos,
+                    5000
+                );
+            }
+        }
+
+        async function actualizarNotificacionSos() {
+            const id = idNotificacionSosActiva;
+
+            if (id === null) {
+                return;
+            }
+
+            try {
+                const respuesta = await fetch(
+                    API + '/notificaciones-sos/' + id, {
+                        headers: {
+                            'Authorization': 'Bearer ' + token,
+                            'Accept': 'application/json'
+                        },
+                        cache: 'no-store'
+                    }
+                );
+
+                if (!respuesta.ok) {
+                    throw new Error('No se pudo consultar la alerta del contacto.');
+                }
+
+                const datos = (await respuesta.json()).alerta;
+
+                // Si se cerró la tarjeta durante la consulta, no volver a mostrarla.
+                if (idNotificacionSosActiva !== id) {
+                    return;
+                }
+                sessionStorage.removeItem('alerta_ixta_destino_sos');
+
+
+                const latitud = Number(datos.ubicacion.latitud);
+                const longitud = Number(datos.ubicacion.longitud);
+
+                if (!Number.isFinite(latitud) || !Number.isFinite(longitud)) {
+                    throw new Error('La ubicación de esta alerta no está disponible.');
+                }
+
+                document.getElementById('tituloNotificacionSos').textContent =
+                    'Alerta SOS de ' + datos.nombre;
+
+                document.getElementById('circuloNotificacionSos').textContent =
+                    datos.circulo === 'CONFIANZA' ?
+                    'Contacto de tu círculo de confianza' :
+                    'Contacto de tu círculo de vecinos';
+
+                document.getElementById('datosNotificacionSos').textContent =
+                    'Folio: ' + datos.folio +
+                    ' · Tipo: ' + (datos.tipo ?? 'No especificado') +
+                    ' · Estado: ' + datos.estado;
+
+                document.getElementById('ubicacionNotificacionSos').textContent =
+                    'El marcador violeta muestra su última ubicación registrada.';
+
+                document.getElementById('tarjetaNotificacionSos').hidden = false;
+
+                const punto = [latitud, longitud];
+
+                if (!marcadorContactoSos) {
+                    marcadorContactoSos = L.circleMarker(punto, {
+                        radius: 12,
+                        color: '#ffffff',
+                        weight: 3,
+                        fillColor: '#702a9c',
+                        fillOpacity: 1
+                    }).addTo(mapa);
+
+                    const nombre = document.createElement('span');
+                    nombre.textContent = datos.nombre;
+                    marcadorContactoSos.bindPopup(nombre);
+                } else {
+                    marcadorContactoSos.setLatLng(punto);
+                }
+
+                if (seguirContactoSos) {
+                    mapa.setView(punto, 16);
+                }
+
+                if (!['NUEVA', 'EN_CAMINO', 'EN_SITIO']
+                    .includes(datos.estado)) {
+                    clearInterval(intervaloNotificacionSos);
+                    intervaloNotificacionSos = null;
+
+                    document.getElementById('ubicacionNotificacionSos')
+                        .textContent =
+                        'La alerta terminó. El marcador muestra la última ubicación registrada.';
+                }
+            } catch (error) {
+                if (idNotificacionSosActiva !== id) {
+                    return;
+                }
+
+                document.getElementById('tarjetaNotificacionSos').hidden = false;
+                document.getElementById('ubicacionNotificacionSos')
+                    .textContent = error.message;
+            }
+        }
+
+        function centrarNotificacionSos() {
+            if (!marcadorContactoSos) {
+                return;
+            }
+
+            seguirContactoSos = true;
+            mapa.setView(marcadorContactoSos.getLatLng(), 16);
+        }
+
+        function cerrarVistaNotificacionSos() {
+            idNotificacionSosActiva = null;
+            seguirContactoSos = false;
+
+            if (intervaloNotificacionSos !== null) {
+                clearInterval(intervaloNotificacionSos);
+                intervaloNotificacionSos = null;
+            }
+
+            if (marcadorContactoSos) {
+                mapa.removeLayer(marcadorContactoSos);
+                marcadorContactoSos = null;
+            }
+
+            document.getElementById('tarjetaNotificacionSos').hidden = true;
+
+            const direccion = new URL(window.location.href);
+            direccion.searchParams.delete('notificacion');
+
+            history.replaceState(
+                null,
+                '',
+                direccion.pathname + direccion.search
+            );
+
+            if (latitudActual !== null && longitudActual !== null) {
+                mapa.setView([latitudActual, longitudActual], 16);
+            }
         }
 
         let consultaUsuario = null;
@@ -2544,13 +3091,17 @@
             }
 
 
-            mapa.setView(
-                [
-                    latitud,
-                    longitud
-                ],
-                16
-            );
+            // Mientras vemos la alerta de un contacto, el GPS propio
+            // actualiza nuestro marcador sin quitar el mapa de esa alerta.
+            if (idNotificacionSosActiva === null) {
+                mapa.setView(
+                    [
+                        latitud,
+                        longitud
+                    ],
+                    16
+                );
+            }
 
         }
 
@@ -3865,6 +4416,26 @@
 
             try {
 
+                if ('serviceWorker' in navigator) {
+                    const registro = await navigator.serviceWorker.getRegistration('/');
+                    const suscripcion = await registro?.pushManager.getSubscription();
+
+                    if (suscripcion) {
+                        await fetch(API + '/suscripciones-push', {
+                            method: 'DELETE',
+                            headers: {
+                                'Authorization': 'Bearer ' + token,
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                endpoint: suscripcion.endpoint
+                            })
+                        });
+
+                        await suscripcion.unsubscribe();
+                    }
+                }
                 await fetch(
                     API + '/logout', {
                         method: 'POST',

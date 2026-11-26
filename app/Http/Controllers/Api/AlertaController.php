@@ -13,6 +13,7 @@ use App\Models\SeguimientoAlerta;
 use App\Models\Operador;
 use App\Models\SolicitudCancelacion;
 use App\Models\User;
+use App\Jobs\EnviarPushSos;
 
 class AlertaController extends Controller
 {
@@ -168,6 +169,43 @@ class AlertaController extends Controller
                 $datos['precision_m'] ?? null,
             ]);
 
+            // Preparar una notificación para cada contacto vinculado.
+            $destinatarios = [];
+
+            foreach (
+                [
+                    'contactos_confianza' => 'CONFIANZA',
+                    'contactos_vecinos' => 'VECINOS',
+                ] as $tabla => $circulo
+            ) {
+                $vinculos = DB::table($tabla)
+                    ->where('estado', 'ACEPTADA')
+                    ->where(function ($consulta) use ($usuario) {
+                        $consulta->where('id_usuario_1', $usuario->id)
+                            ->orWhere('id_usuario_2', $usuario->id);
+                    })
+                    ->get(['id_usuario_1', 'id_usuario_2']);
+
+                foreach ($vinculos as $vinculo) {
+                    $otroId = (int) $vinculo->id_usuario_1 === (int) $usuario->id
+                        ? (int) $vinculo->id_usuario_2
+                        : (int) $vinculo->id_usuario_1;
+
+                    // Si está en ambos círculos, recibirá una sola notificación.
+                    $destinatarios[$otroId] ??= $circulo;
+                }
+            }
+
+            foreach ($destinatarios as $idDestinatario => $circulo) {
+                DB::table('notificaciones_sos')->insert([
+                    'id_alerta' => $alerta->id_alerta,
+                    'id_destinatario' => $idDestinatario,
+                    'circulo' => $circulo,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
 
             return $alerta;
         });
@@ -178,6 +216,8 @@ class AlertaController extends Controller
                 'message' => 'Ya tienes una alerta activa. No puedes generar otra hasta que la anterior termine o sea cancelada.'
             ], 409);
         }
+
+        EnviarPushSos::dispatchAfterResponse((int) $alerta->id_alerta);
 
         return response()->json([
             'message' => 'Alerta enviada correctamente.',

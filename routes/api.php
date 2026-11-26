@@ -10,6 +10,8 @@ use App\Http\Controllers\Api\SolicitudCancelacionController;
 use App\Http\Controllers\Api\VerificacionIdentidadController;
 use App\Http\Controllers\Api\CiudadanoController;
 use App\Http\Controllers\Api\PoliciaMonitoreoController;
+use App\Http\Controllers\Api\NotificacionSosController;
+use App\Http\Controllers\Api\SuscripcionPushController;
 
 
 //Rutas públicas
@@ -41,6 +43,33 @@ Route::post('/personal/correo-verificacion/reenviar', [
 
 
 Route::middleware('auth:sanctum')->group(function () {
+
+    Route::get('/notificaciones-sos', [
+        NotificacionSosController::class,
+        'index',
+    ]);
+
+    Route::get('/notificaciones-sos/{id}', [
+        NotificacionSosController::class,
+        'show',
+    ])->whereNumber('id');
+
+    Route::get('/suscripciones-push/clave-publica', [
+        SuscripcionPushController::class,
+        'clavePublica',
+    ]);
+
+    Route::post('/suscripciones-push', [
+        SuscripcionPushController::class,
+        'guardar',
+    ]);
+
+    Route::delete('/suscripciones-push', [
+        SuscripcionPushController::class,
+        'eliminar',
+    ]);
+
+    Route::post('/suscripciones-push/estado', [SuscripcionPushController::class, 'estado']);
 
     Route::get('/usuario', [
         AuthController::class,

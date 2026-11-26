@@ -36,6 +36,12 @@ return [
     ],
 
     'alerta_ixta' => [
-    'curp_index_key' => env('CURP_INDEX_KEY'),
+        'curp_index_key' => env('CURP_INDEX_KEY'),
+    ],
+
+    'webpush' => [
+        'subject' => env('WEBPUSH_SUBJECT'),
+        'public_key' => env('WEBPUSH_PUBLIC_KEY'),
+        'private_key' => env('WEBPUSH_PRIVATE_KEY'),
     ],
 ];

@@ -239,8 +239,16 @@
                     'Inicio de sesión correcto.';
 
 
-                // Ir a la pantalla principal.
+                // Recuperar la alerta que abrió la persona antes de iniciar sesión.
+                const siguiente = sessionStorage.getItem(
+                    'alerta_ixta_destino_sos'
+                );
+
+                sessionStorage.removeItem('alerta_ixta_destino_sos');
+
                 window.location.href =
+                    siguiente && /^\/inicio\?notificacion=[1-9]\d*$/.test(siguiente) ?
+                    siguiente :
                     "{{ route('inicio') }}";
 
 
