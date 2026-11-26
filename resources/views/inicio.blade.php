@@ -1626,6 +1626,7 @@
         let idNotificacionSosActiva = null;
         let intervaloNotificacionSos = null;
         let seguirContactoSos = false;
+        let revisandoNotificacionesSos = false;
 
         let latitudActual = null;
 
@@ -1704,6 +1705,16 @@
                 if (idNotificacion && /^\d+$/.test(idNotificacion)) {
                     await mostrarNotificacionSos(idNotificacion);
                 }
+
+                await revisarNotificacionesSosAbiertas();
+
+                setInterval(revisarNotificacionesSosAbiertas, 5000);
+
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === 'visible') {
+                        revisarNotificacionesSosAbiertas();
+                    }
+                });
 
             }
         );
@@ -2486,6 +2497,43 @@
                 }
             });
 
+        }
+
+        async function revisarNotificacionesSosAbiertas() {
+            if (revisandoNotificacionesSos ||
+                idNotificacionSosActiva !== null ||
+                document.visibilityState !== 'visible') {
+                return;
+            }
+
+            revisandoNotificacionesSos = true;
+
+            try {
+                const respuesta = await fetch(API + '/notificaciones-sos', {
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Accept': 'application/json'
+                    },
+                    cache: 'no-store'
+                });
+
+                if (!respuesta.ok) return;
+
+                const datos = await respuesta.json();
+                const notificaciones = datos.notificaciones ?? [];
+
+                const pendiente = notificaciones.find(notificacion =>
+                    notificacion.leida_at === null && ['NUEVA', 'EN_CAMINO', 'EN_SITIO'].includes(notificacion.estado)
+                );
+
+                if (pendiente && idNotificacionSosActiva === null) {
+                    await mostrarNotificacionSos(pendiente.id);
+                }
+            } catch (error) {
+                console.error('No se pudieron consultar las notificaciones SOS:', error);
+            } finally {
+                revisandoNotificacionesSos = false;
+            }
         }
 
         async function mostrarNotificacionSos(id) {
